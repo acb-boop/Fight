@@ -18,6 +18,46 @@
             align-items: center;
             gap: 20px;
         }
+        #canvas-wrapper {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .health-bars {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 10px;
+        }
+        .health-bar {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+        .health-bar-container {
+            width: 180px;
+            height: 20px;
+            border: 2px solid #333;
+            background-color: #ddd;
+            display: flex;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .health-segment {
+            flex: 1;
+            height: 100%;
+            border-right: 1px solid #333;
+            transition: background-color 0.3s ease;
+        }
+        .health-segment:last-child {
+            border-right: none;
+        }
+        .health-bar-label {
+            font-size: 12px;
+            font-weight: bold;
+            color: #333;
+        }
         canvas {
             border: 2px solid #333;
             background-color: white;
@@ -46,6 +86,18 @@
             gap: 10px;
             margin-top: 10px;
         }
+        .health-color-controls {
+            display: flex;
+            gap: 20px;
+            margin-top: 10px;
+            justify-content: center;
+        }
+        .health-color-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
         label {
             font-weight: bold;
         }
@@ -53,11 +105,47 @@
 </head>
 <body>
     <div id="container">
-        <canvas id="canvas" width="600" height="400"></canvas>
+        <div id="canvas-wrapper">
+            <div class="health-bars">
+                <div class="health-bar">
+                    <div class="health-bar-label"></div>
+                    <div class="health-bar-container" id="redHealthBar">
+                        <div class="health-segment"></div>
+                        <div class="health-segment"></div>
+                        <div class="health-segment"></div>
+                        <div class="health-segment"></div>
+                        <div class="health-segment"></div>
+                        <div class="health-segment"></div>
+                    </div>
+                </div>
+                <div class="health-bar">
+                    <div class="health-bar-label"></div>
+                    <div class="health-bar-container" id="blueHealthBar">
+                        <div class="health-segment"></div>
+                        <div class="health-segment"></div>
+                        <div class="health-segment"></div>
+                        <div class="health-segment"></div>
+                        <div class="health-segment"></div>
+                        <div class="health-segment"></div>
+                    </div>
+                </div>
+            </div>
+            <canvas id="canvas" width="600" height="400"></canvas>
+        </div>
         <div class="controls">
             <button id="resetBtn">Reset</button>
             <button id="pauseBtn">Pause</button>
             <button id="speedBtn">Increase Speed</button>
+        </div>
+        <div class="health-color-controls">
+            <div class="health-color-group">
+                <label for="redHealthColor">Red Health Bar Color:</label>
+                <input type="color" id="redHealthColor" value="#e74c3c">
+            </div>
+            <div class="health-color-group">
+                <label for="blueHealthColor">Blue Health Bar Color:</label>
+                <input type="color" id="blueHealthColor" value="#3498db">
+            </div>
         </div>
         <div class="color-picker">
             <label for="redThornColor">Red Square Thorn Color:</label>
@@ -80,12 +168,24 @@
         const speedBtn = document.getElementById('speedBtn');
         const redThornColorPicker = document.getElementById('redThornColor');
         const blueThornColorPicker = document.getElementById('blueThornColor');
+        const redHealthColorPicker = document.getElementById('redHealthColor');
+        const blueHealthColorPicker = document.getElementById('blueHealthColor');
+        
+        // Health bar elements
+        const redHealthBar = document.getElementById('redHealthBar');
+        const blueHealthBar = document.getElementById('blueHealthBar');
         
         // Game settings
         let isPaused = false;
         let speedMultiplier = 1;
         let redThornColor = "#FF5733"; // Default red square thorn color
         let blueThornColor = "#33FFF6"; // Default blue square thorn color
+        let redHealthColor = "#e74c3c"; // Default red health bar color
+        let blueHealthColor = "#3498db"; // Default blue health bar color
+        
+        // Health tracking
+        let redSquareHealth = 6; // Max 6 segments
+        let blueSquareHealth = 6; // Max 6 segments
         
         // Default square properties
         const DEFAULT_SQUARE_SIZE = 60;
@@ -123,14 +223,37 @@
         const BLUE_SQUARE_COLOR = '#3498db';
         
         // Powerup properties
-        const KNIFE_SPAWN_INTERVAL = 10000; // 10 seconds
-        const HEAL_SPAWN_INTERVAL = 20000; // 20 seconds
+        const KNIFE_SPAWN_INTERVAL = 8000; // 10 seconds
+        const HEAL_SPAWN_INTERVAL = 15000; // 20 seconds
         const THORN_DURATION = 7000; // 7 seconds
         const POWER_UP_SIZE = 30;
         
         // Flags to track if power-ups are currently on screen
         let knifeSpawnActive = false;
         let healSpawnActive = false;
+        
+        // Function to update health bar display
+        function updateHealthBar(healthBar, health, maxHealth, color) {
+            const segments = healthBar.querySelectorAll('.health-segment');
+            segments.forEach((segment, index) => {
+                if (index < health) {
+                    segment.style.backgroundColor = color;
+                } else {
+                    segment.style.backgroundColor = '#ddd';
+                }
+            });
+        }
+        
+        // Function to calculate health based on square size
+        function calculateHealth(size) {
+            // Health decreases as size decreases from 60 to 20
+            if (size >= 60) return 6;
+            if (size >= 50) return 5;
+            if (size >= 40) return 4;
+            if (size >= 30) return 3;
+            if (size >= 25) return 2;
+            return 1;
+        }
         
         // Create squares with 45° angles only
         function createSquare(x, y, direction, color, imageSrc, isBlue = false) {
@@ -358,7 +481,7 @@
         // Function to draw thorns around a square
         function drawThorns(square) {
             const size = square.size;
-            const thornSize = size / 6; // Size of the triangular thorns
+            const thornSize = size / 8; // Size of the triangular thorns
             
             // Choose the appropriate thorn color based on whether it's blue or red square
             ctx.fillStyle = square.isBlue ? blueThornColor : redThornColor;
@@ -520,6 +643,14 @@
                 }
             }
             
+            // Update health based on square sizes
+            redSquareHealth = calculateHealth(squares[1].size); // Red square is index 1
+            blueSquareHealth = calculateHealth(squares[0].size); // Blue square is index 0
+            
+            // Update health bar displays
+            updateHealthBar(redHealthBar, redSquareHealth, 6, redHealthColor);
+            updateHealthBar(blueHealthBar, blueSquareHealth, 6, blueHealthColor);
+            
             // Check collision between squares
             if (checkCollision(squares[0], squares[1])) {
                 handleCollision(squares[0], squares[1]);
@@ -551,6 +682,10 @@
             isPaused = false;
             pauseBtn.textContent = 'Pause';
             
+            // Reset health
+            redSquareHealth = 6;
+            blueSquareHealth = 6;
+            
             // Reset spawn flags
             knifeSpawnActive = false;
             healSpawnActive = false;
@@ -576,6 +711,19 @@
         blueThornColorPicker.addEventListener('change', function() {
             blueThornColor = this.value;
         });
+        
+        // Health bar color picker event listeners
+        redHealthColorPicker.addEventListener('change', function() {
+            redHealthColor = this.value;
+        });
+        
+        blueHealthColorPicker.addEventListener('change', function() {
+            blueHealthColor = this.value;
+        });
+        
+        // Initialize health bars with default colors
+        updateHealthBar(redHealthBar, redSquareHealth, 6, redHealthColor);
+        updateHealthBar(blueHealthBar, blueSquareHealth, 6, blueHealthColor);
     </script>
 </body>
 </html>
