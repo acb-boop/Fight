@@ -101,6 +101,13 @@
         label {
             font-weight: bold;
         }
+        .color-input {
+            padding: 4px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: 80px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -140,20 +147,20 @@
         <div class="health-color-controls">
             <div class="health-color-group">
                 <label for="redHealthColor">Red Health Bar Color:</label>
-                <input type="color" id="redHealthColor" value="#e74c3c">
+                <input type="text" id="redHealthColor" class="color-input" value="#e74c3c" placeholder="#RRGGBB">
             </div>
             <div class="health-color-group">
                 <label for="blueHealthColor">Blue Health Bar Color:</label>
-                <input type="color" id="blueHealthColor" value="#3498db">
+                <input type="text" id="blueHealthColor" class="color-input" value="#3498db" placeholder="#RRGGBB">
             </div>
         </div>
         <div class="color-picker">
             <label for="redThornColor">Red Square Thorn Color:</label>
-            <input type="color" id="redThornColor" value="#FF5733">
+            <input type="text" id="redThornColor" class="color-input" value="#FF5733" placeholder="#RRGGBB">
         </div>
         <div class="color-picker">
             <label for="blueThornColor">Blue Square Thorn Color:</label>
-            <input type="color" id="blueThornColor" value="#33FFF6">
+            <input type="text" id="blueThornColor" class="color-input" value="#33FFF6" placeholder="#RRGGBB">
         </div>
     </div>
 
@@ -166,10 +173,10 @@
         const resetBtn = document.getElementById('resetBtn');
         const pauseBtn = document.getElementById('pauseBtn');
         const speedBtn = document.getElementById('speedBtn');
-        const redThornColorPicker = document.getElementById('redThornColor');
-        const blueThornColorPicker = document.getElementById('blueThornColor');
-        const redHealthColorPicker = document.getElementById('redHealthColor');
-        const blueHealthColorPicker = document.getElementById('blueHealthColor');
+        const redThornColorInput = document.getElementById('redThornColor');
+        const blueThornColorInput = document.getElementById('blueThornColor');
+        const redHealthColorInput = document.getElementById('redHealthColor');
+        const blueHealthColorInput = document.getElementById('blueHealthColor');
         
         // Health bar elements
         const redHealthBar = document.getElementById('redHealthBar');
@@ -223,14 +230,10 @@
         const BLUE_SQUARE_COLOR = '#3498db';
         
         // Powerup properties
-        const KNIFE_SPAWN_INTERVAL = 8000; // 10 seconds
-        const HEAL_SPAWN_INTERVAL = 15000; // 20 seconds
+        const KNIFE_SPAWN_INTERVAL = 8000; // 8 seconds
+        const HEAL_SPAWN_INTERVAL = 15000; // 15 seconds
         const THORN_DURATION = 7000; // 7 seconds
         const POWER_UP_SIZE = 30;
-        
-        // Flags to track if power-ups are currently on screen
-        let knifeSpawnActive = false;
-        let healSpawnActive = false;
         
         // Function to update health bar display
         function updateHealthBar(healthBar, health, maxHealth, color) {
@@ -323,6 +326,14 @@
                 return;
             }
             
+            // Check if knife already exists
+            const knifeExists = powerUps.some(powerUp => powerUp.type === 'knife');
+            if (knifeExists) {
+                // Schedule next attempt
+                setTimeout(spawnKnifePowerUp, KNIFE_SPAWN_INTERVAL);
+                return;
+            }
+            
             const position = getRandomPosition();
             powerUps.push({
                 x: position.x,
@@ -332,9 +343,6 @@
                 imgLoaded: knifeImgLoaded,
                 size: POWER_UP_SIZE
             });
-            
-            // Set flag to indicate knife is active on screen
-            knifeSpawnActive = true;
         }
         
         // Function to spawn a heal power-up
@@ -354,9 +362,6 @@
                 imgLoaded: healImgLoaded,
                 size: POWER_UP_SIZE
             });
-            
-            // Set flag to indicate heal is active on screen
-            healSpawnActive = true;
         }
         
         // Function to check collision between square and power-up
@@ -468,20 +473,20 @@
             
             // Check if thorned square is hitting the normal square
             if (square1.hasThorns && !square2.hasThorns) {
-                // Reduce size of square2 and remove thorns from square1
+                // Reduce size of square2 and remove thorns from all squares
                 square2.size = Math.max(20, square2.size - 10);
-                square1.hasThorns = false;
+                squares.forEach(sq => sq.hasThorns = false);
             } else if (square2.hasThorns && !square1.hasThorns) {
-                // Reduce size of square1 and remove thorns from square2
+                // Reduce size of square1 and remove thorns from all squares
                 square1.size = Math.max(20, square1.size - 10);
-                square2.hasThorns = false;
+                squares.forEach(sq => sq.hasThorns = false);
             }
         }
         
         // Function to draw thorns around a square
         function drawThorns(square) {
             const size = square.size;
-            const thornSize = size / 8; // Size of the triangular thorns
+            const thornSize = size / 12; // Thinner thorns
             
             // Choose the appropriate thorn color based on whether it's blue or red square
             ctx.fillStyle = square.isBlue ? blueThornColor : redThornColor;
@@ -553,23 +558,20 @@
                     if (checkPowerUpCollision(square, powerUp)) {
                         // Handle power-up effect
                         if (powerUp.type === 'knife') {
-                            // Add thorns to the square
+                            // Remove thorns from all squares first
+                            squares.forEach(sq => sq.hasThorns = false);
+                            
+                            // Add thorns to the square that collected it
                             square.hasThorns = true;
                             square.thornExpiryTime = currentTime + THORN_DURATION;
                             
-                            // Set flag to indicate knife is no longer active
-                            knifeSpawnActive = false;
-                            
-                            // Schedule next knife spawn after 10 seconds
+                            // Schedule next knife spawn after interval
                             setTimeout(spawnKnifePowerUp, KNIFE_SPAWN_INTERVAL);
                         } else if (powerUp.type === 'heal') {
                             // Increase square size by 10px up to maximum of 60px
                             square.size = Math.min(60, square.size + 10);
                             
-                            // Set flag to indicate heal is no longer active
-                            healSpawnActive = false;
-                            
-                            // Schedule next heal spawn after 20 seconds
+                            // Schedule next heal spawn after interval
                             setTimeout(spawnHealPowerUp, HEAL_SPAWN_INTERVAL);
                         }
                         
@@ -686,10 +688,6 @@
             redSquareHealth = 6;
             blueSquareHealth = 6;
             
-            // Reset spawn flags
-            knifeSpawnActive = false;
-            healSpawnActive = false;
-            
             // Spawn knife immediately on reset
             spawnKnifePowerUp();
         });
@@ -703,22 +701,35 @@
             speedMultiplier = (speedMultiplier >= 3) ? 1 : speedMultiplier + 0.5;
         });
         
-        // Thorn color picker event listeners
-        redThornColorPicker.addEventListener('change', function() {
-            redThornColor = this.value;
+        // Color input validation function
+        function isValidHexColor(color) {
+            return /^#[0-9A-F]{6}$/i.test(color);
+        }
+        
+        // Thorn color input event listeners
+        redThornColorInput.addEventListener('input', function() {
+            if (isValidHexColor(this.value)) {
+                redThornColor = this.value;
+            }
         });
         
-        blueThornColorPicker.addEventListener('change', function() {
-            blueThornColor = this.value;
+        blueThornColorInput.addEventListener('input', function() {
+            if (isValidHexColor(this.value)) {
+                blueThornColor = this.value;
+            }
         });
         
-        // Health bar color picker event listeners
-        redHealthColorPicker.addEventListener('change', function() {
-            redHealthColor = this.value;
+        // Health bar color input event listeners
+        redHealthColorInput.addEventListener('input', function() {
+            if (isValidHexColor(this.value)) {
+                redHealthColor = this.value;
+            }
         });
         
-        blueHealthColorPicker.addEventListener('change', function() {
-            blueHealthColor = this.value;
+        blueHealthColorInput.addEventListener('input', function() {
+            if (isValidHexColor(this.value)) {
+                blueHealthColor = this.value;
+            }
         });
         
         // Initialize health bars with default colors
