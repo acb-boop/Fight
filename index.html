@@ -529,9 +529,9 @@
         // Start the animation
         animate();
         
-        // Initialize the game by spawning first power-ups
-        spawnKnifePowerUp();
-        spawnHealPowerUp();
+        // Start spawning power-ups with initial delays
+        setTimeout(spawnKnifePowerUp, KNIFE_SPAWN_INTERVAL);
+        setTimeout(spawnHealPowerUp, HEAL_SPAWN_INTERVAL);
         
         // Event listeners for buttons
         // Reset button event listener
@@ -545,13 +545,9 @@
             isPaused = false;
             pauseBtn.textContent = 'Pause';
             
-            // Clear any existing timeouts
+            // Reset spawn flags
             knifeSpawnActive = false;
             healSpawnActive = false;
-            
-            // Start spawning power-ups again
-            spawnKnifePowerUp();
-            spawnHealPowerUp();
         });
 
         pauseBtn.addEventListener('click', function() {
