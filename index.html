@@ -423,6 +423,7 @@
                 ctx.drawImage(powerUp.img, powerUp.x, powerUp.y, powerUp.size, powerUp.size);
                 
                 // Check collision with squares
+                let powerUpCollected = false;
                 for (let j = 0; j < squares.length; j++) {
                     const square = squares[j];
                     
@@ -449,10 +450,15 @@
                             setTimeout(spawnHealPowerUp, HEAL_SPAWN_INTERVAL);
                         }
                         
-                        // Remove the power-up
-                        powerUps.splice(i, 1);
+                        // Mark power-up for removal
+                        powerUpCollected = true;
                         break;
                     }
+                }
+                
+                // Remove the power-up if it was collected
+                if (powerUpCollected) {
+                    powerUps.splice(i, 1);
                 }
             }
             
@@ -529,8 +535,8 @@
         // Start the animation
         animate();
         
-        // Start spawning power-ups with initial delays
-        setTimeout(spawnKnifePowerUp, KNIFE_SPAWN_INTERVAL);
+        // Spawn knife immediately, heal after delay
+        spawnKnifePowerUp();
         setTimeout(spawnHealPowerUp, HEAL_SPAWN_INTERVAL);
         
         // Event listeners for buttons
@@ -548,6 +554,9 @@
             // Reset spawn flags
             knifeSpawnActive = false;
             healSpawnActive = false;
+            
+            // Spawn knife immediately on reset
+            spawnKnifePowerUp();
         });
 
         pauseBtn.addEventListener('click', function() {
