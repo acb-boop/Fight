@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Enhanced Bouncing Squares Simulation</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+        #container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        canvas {
+            border: 2px solid #333;
+            background-color: white;
+        }
+        .health-bars {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+        .health-bar {
+            width: 200px;
+            height: 20px;
+            border: 2px solid #333;
+            display: flex;
+        }
+        .health-segment {
+            flex: 1;
+            border-right: 1px solid #333;
+        }
+        .health-segment:last-child {
+            border-right: none;
+        }
+        .controls {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .color-picker {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        label {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div class="health-bars">
+            <div>
+                <div id="redHealthBar" class="health-bar"></div>
+                <div style="text-align: center; font-size: 12px; margin-top: 5px;"></div>
+            </div>
+            <div>
+                <div id="blueHealthBar" class="health-bar"></div>
+                <div style="text-align: center; font-size: 12px; margin-top: 5px;"></div>
+            </div>
+        </div>
+        <canvas id="canvas" width="600" height="400"></canvas>
+        <div class="controls">
+            <button id="resetBtn">Reset</button>
+            <button id="pauseBtn">Pause</button>
+            <button id="speedBtn">Increase Speed</button>
+        </div>
+        <div class="color-picker">
+            <label for="redThornColor">Red Square Thorn Color:</label>
+            <input type="color" id="redThornColor" value="#FF5733">
+        </div>
+        <div class="color-picker">
+            <label for="blueThornColor">Blue Square Thorn Color:</label>
+            <input type="color" id="blueThornColor" value="#33FFF6">
+        </div>
+    </div>
+
+    <script>
+        // Get the canvas and its context
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Get health bar elements
+        const redHealthBar = document.getElementById('redHealthBar');
+        const blueHealthBar = document.getElementById('blueHealthBar');
+        
+        // Buttons
+        const resetBtn = document.getElementById('resetBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const speedBtn = document.getElementById('speedBtn');
+        const redThornColorPicker = document.getElementById('redThornColor');
+        const blueThornColorPicker = document.getElementById('blueThornColor');
+        
+        // Game settings
+        let isPaused = false;
+        let speedMultiplier = 1;
+        let redThornColor = "#FF5733"; // Default red square thorn color
+        let blueThornColor = "#33FFF6"; // Default blue square thorn color
+        
+        // Default square properties
+        const DEFAULT_SQUARE_SIZE = 60;
+        
+        // Speed constant - all squares will move at this speed, but in different directions
+        const SPEED = 3;
+        
+        // Fallback colors for squares when images aren't loaded
+        const RED_SQUARE_COLOR = '#e74c3c';
+        const BLUE_SQUARE_COLOR = '#3498db';
+        
+        // Powerup properties
+        const KNIFE_SPAWN_INTERVAL = 10000; // 10 seconds
+        const HEAL_SPAWN_INTERVAL = 20000; // 20 seconds
+        const THORN_DURATION = 7000; // 7 seconds
+        const POWER_UP_SIZE = 30;
+        
+        // Create squares with 45° angles only
+        function createSquare(x, y, direction, color, isBlue = false) {
+            // direction can be 0, 1, 2, or 3 for the four diagonal directions
+            let vx, vy;
+            
+            switch(direction) {
+                case 0: // 45° - down-right
+                    vx = SPEED;
+                    vy = SPEED;
+                    break;
+                case 1: // 135° - down-left
+                    vx = -SPEED;
+                    vy = SPEED;
+                    break;
+                case 2: // 225° - up-left
+                    vx = -SPEED;
+                    vy = -SPEED;
+                    break;
+                case 3: // 315° - up-right
+                    vx = SPEED;
+                    vy = -SPEED;
+                    break;
+            }
+            
+            return {
+                x,
+                y,
+                vx,
+                vy,
+                size: DEFAULT_SQUARE_SIZE,
+                direction,
+                color,
+                hasThorns: false,
+                thornExpiryTime: 0,
+                originalSize: DEFAULT_SQUARE_SIZE,
+                isBlue, // Flag to identify if it's the blue square
+                health: 6 // Add health property
+            };
+        }
+        
+        // Initialize squares with health
+        let squares = [
+            createSquare(100, 150, 0, '#3498db', true), // Down-right (blue)
+            createSquare(280, 300, 2, '#e74c3c', false)  // Up-left (red)
+        ];
+        
+        // Powerups array
+        let powerUps = [];
+        
+        // Function to update HTML health bars
+        function updateHealthBars() {
+            // Update red health bar
+            redHealthBar.innerHTML = '';
+            for (let i = 0; i < 6; i++) {
+                const segment = document.createElement('div');
+                segment.className = 'health-segment';
+                segment.style.backgroundColor = i < squares[1].health ? redThornColor : '#ddd';
+                redHealthBar.appendChild(segment);
+            }
+            
+            // Update blue health bar
+            blueHealthBar.innerHTML = '';
+            for (let i = 0; i < 6; i++) {
+                const segment = document.createElement('div');
+                segment.className = 'health-segment';
+                segment.style.backgroundColor = i < squares[0].health ? blueThornColor : '#ddd';
+                blueHealthBar.appendChild(segment);
+            }
+        }
+        
+        // Function to create a random position for power-ups
+        function getRandomPosition() {
+            return {
+                x: Math.random() * (canvas.width - POWER_UP_SIZE),
+                y: Math.random() * (canvas.height - POWER_UP_SIZE)
+            };
+        }
+        
+        // Function to spawn a knife power-up
+        function spawnKnifePowerUp() {
+            if (isPaused) {
+                // If game is paused, try again later
+                setTimeout(spawnKnifePowerUp, 1000);
+                return;
+            }
+            
+            const position = getRandomPosition();
+            powerUps.push({
+                x: position.x,
+                y: position.y,
+                type: 'knife',
+                size: POWER_UP_SIZE
+            });
+        }
+        
+        // Function to spawn a heal power-up
+        function spawnHealPowerUp() {
+            if (isPaused) {
+                // If game is paused, try again later
+                setTimeout(spawnHealPowerUp, 1000);
+                return;
+            }
+            
+            const position = getRandomPosition();
+            powerUps.push({
+                x: position.x,
+                y: position.y,
+                type: 'heal',
+                size: POWER_UP_SIZE
+            });
+        }
+        
+        // Function to check collision between square and power-up
+        function checkPowerUpCollision(square, powerUp) {
+            return square.x < powerUp.x + powerUp.size &&
+                   square.x + square.size > powerUp.x &&
+                   square.y < powerUp.y + powerUp.size &&
+                   square.y + square.size > powerUp.y;
+        }
+        
+        // Function to check collision between two squares
+        function checkCollision(square1, square2) {
+            return square1.x < square2.x + square2.size &&
+                   square1.x + square1.size > square2.x &&
+                   square1.y < square2.y + square2.size &&
+                   square1.y + square1.size > square2.y;
+        }
+
+        // Determine which side of square2 was hit by square1
+        function getCollisionSide(square1, square2) {
+            // Calculate centers
+            const center1 = { x: square1.x + square1.size / 2, y: square1.y + square1.size / 2 };
+            const center2 = { x: square2.x + square2.size / 2, y: square2.y + square2.size / 2 };
+            
+            // Calculate relative position
+            const dx = center1.x - center2.x;
+            const dy = center1.y - center2.y;
+            
+            // Determine collision side based on approach angle
+            if (Math.abs(dx) > Math.abs(dy)) {
+                return dx > 0 ? "right" : "left";
+            } else {
+                return dy > 0 ? "bottom" : "top";
+            }
+        }
+
+        // Function to handle collision between two squares with reflective physics
+        function handleCollision(square1, square2) {
+            // Determine which side was hit
+            const side1 = getCollisionSide(square1, square2);
+            const side2 = getCollisionSide(square2, square1);
+            
+            // Apply reflective bouncing for square1
+            if (side1 === "left" || side1 === "right") {
+                square1.vx *= -1;
+                
+                if (square1.vy > 0) {
+                    square1.direction = square1.vx > 0 ? 0 : 1;
+                } else {
+                    square1.direction = square1.vx > 0 ? 3 : 2;
+                }
+            } else {
+                square1.vy *= -1;
+                
+                if (square1.vx > 0) {
+                    square1.direction = square1.vy > 0 ? 0 : 3;
+                } else {
+                    square1.direction = square1.vy > 0 ? 1 : 2;
+                }
+            }
+            
+            // Apply reflective bouncing for square2
+            if (side2 === "left" || side2 === "right") {
+                square2.vx *= -1;
+                
+                if (square2.vy > 0) {
+                    square2.direction = square2.vx > 0 ? 0 : 1;
+                } else {
+                    square2.direction = square2.vx > 0 ? 3 : 2;
+                }
+            } else {
+                square2.vy *= -1;
+                
+                if (square2.vx > 0) {
+                    square2.direction = square2.vy > 0 ? 0 : 3;
+                } else {
+                    square2.direction = square2.vy > 0 ? 1 : 2;
+                }
+            }
+            
+            // Move squares apart to prevent sticking
+            const center1 = { x: square1.x + square1.size / 2, y: square1.y + square1.size / 2 };
+            const center2 = { x: square2.x + square2.size / 2, y: square2.y + square2.size / 2 };
+            
+            const dx = center2.x - center1.x;
+            const dy = center2.y - center1.y;
+            
+            const overlapX = (square1.size + square2.size) / 2 - Math.abs(dx);
+            if (Math.abs(dx) > 0) {
+                if (dx > 0) {
+                    square1.x -= overlapX / 4;
+                    square2.x += overlapX / 4;
+                } else {
+                    square1.x += overlapX / 4;
+                    square2.x -= overlapX / 4;
+                }
+            }
+            
+            const overlapY = (square1.size + square2.size) / 2 - Math.abs(dy);
+            if (Math.abs(dy) > 0) {
+                if (dy > 0) {
+                    square1.y -= overlapY / 4;
+                    square2.y += overlapY / 4;
+                } else {
+                    square1.y += overlapY / 4;
+                    square2.y -= overlapY / 4;
+                }
+            }
+            
+            // Check if thorned square is hitting the normal square
+            if (square1.hasThorns && !square2.hasThorns) {
+                // Reduce health of square2 and remove thorns from square1
+                square2.health = Math.max(0, square2.health - 1);
+                square2.size = Math.max(20, square2.size - 10);
+                square1.hasThorns = false;
+            } else if (square2.hasThorns && !square1.hasThorns) {
+                // Reduce health of square1 and remove thorns from square2
+                square1.health = Math.max(0, square1.health - 1);
+                square1.size = Math.max(20, square1.size - 10);
+                square2.hasThorns = false;
+            }
+        }
+        
+        // Function to draw thorns around a square (longer thorns)
+        function drawThorns(square) {
+            const size = square.size;
+            const thornSize = size / 6; // Made thorns longer (was /12, now /4)
+            const thornSpacing = size / 8; // Adjust spacing for longer thorns
+            
+            // Choose the appropriate thorn color based on whether it's blue or red square
+            ctx.fillStyle = square.isBlue ? blueThornColor : redThornColor;
+            
+            // Draw thorns on all sides
+            // Top side
+            for (let i = 0; i < size; i += thornSpacing) {
+                ctx.beginPath();
+                ctx.moveTo(square.x + i, square.y);
+                ctx.lineTo(square.x + i + thornSpacing/2, square.y - thornSize);
+                ctx.lineTo(square.x + i + thornSpacing, square.y);
+                ctx.closePath();
+                ctx.fill();
+            }
+            
+            // Bottom side
+            for (let i = 0; i < size; i += thornSpacing) {
+                ctx.beginPath();
+                ctx.moveTo(square.x + i, square.y + size);
+                ctx.lineTo(square.x + i + thornSpacing/2, square.y + size + thornSize);
+                ctx.lineTo(square.x + i + thornSpacing, square.y + size);
+                ctx.closePath();
+                ctx.fill();
+            }
+            
+            // Left side
+            for (let i = 0; i < size; i += thornSpacing) {
+                ctx.beginPath();
+                ctx.moveTo(square.x, square.y + i);
+                ctx.lineTo(square.x - thornSize, square.y + i + thornSpacing/2);
+                ctx.lineTo(square.x, square.y + i + thornSpacing);
+                ctx.closePath();
+                ctx.fill();
+            }
+            
+            // Right side
+            for (let i = 0; i < size; i += thornSpacing) {
+                ctx.beginPath();
+                ctx.moveTo(square.x + size, square.y + i);
+                ctx.lineTo(square.x + size + thornSize, square.y + i + thornSpacing/2);
+                ctx.lineTo(square.x + size, square.y + i + thornSpacing);
+                ctx.closePath();
+                ctx.fill();
+            }
+        }
+
+        // Function to update the simulation
+        function update() {
+            if (isPaused) return;
+            
+            // Get the current time
+            const currentTime = Date.now();
+            
+            // Clear the canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Update and draw power-ups
+            for (let i = powerUps.length - 1; i >= 0; i--) {
+                const powerUp = powerUps[i];
+                
+                // Draw power-up using simple shapes
+                ctx.fillStyle = powerUp.type === 'knife' ? '#ff4757' : '#2ed573';
+                ctx.fillRect(powerUp.x, powerUp.y, powerUp.size, powerUp.size);
+                ctx.strokeStyle = '#333';
+                ctx.strokeRect(powerUp.x, powerUp.y, powerUp.size, powerUp.size);
+                
+                // Add text label
+                ctx.fillStyle = '#fff';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(powerUp.type === 'knife' ? 'K' : 'H', 
+                           powerUp.x + powerUp.size/2, 
+                           powerUp.y + powerUp.size/2 + 4);
+                
+                // Check collision with squares
+                for (let j = 0; j < squares.length; j++) {
+                    const square = squares[j];
+                    
+                    if (checkPowerUpCollision(square, powerUp)) {
+                        // Handle power-up effect
+                        if (powerUp.type === 'knife') {
+                            // Add thorns to the square
+                            square.hasThorns = true;
+                            square.thornExpiryTime = currentTime + THORN_DURATION;
+                            
+                            // Remove the power-up
+                            powerUps.splice(i, 1);
+                            
+                            // Schedule next knife spawn after 10 seconds
+                            setTimeout(spawnKnifePowerUp, KNIFE_SPAWN_INTERVAL);
+                        } else if (powerUp.type === 'heal') {
+                            // Increase square size by 10px up to maximum of 60px and restore health
+                            square.size = Math.min(60, square.size + 10);
+                            square.health = Math.min(6, square.health + 1);
+                            
+                            // Remove the power-up
+                            powerUps.splice(i, 1);
+                            
+                            // Schedule next heal spawn after 20 seconds
+                            setTimeout(spawnHealPowerUp, HEAL_SPAWN_INTERVAL);
+                        }
+                        break;
+                    }
+                }
+            }
+            
+            // Update and draw squares
+            for (let i = 0; i < squares.length; i++) {
+                const square = squares[i];
+                
+                // Check if thorns effect has expired
+                if (square.hasThorns && currentTime > square.thornExpiryTime) {
+                    square.hasThorns = false;
+                }
+                
+                // Update position
+                square.x += square.vx * speedMultiplier;
+                square.y += square.vy * speedMultiplier;
+                
+                // Check boundary collision (with border)
+                if (square.x <= 0 || square.x + square.size >= canvas.width) {
+                    // Reflect horizontally
+                    square.vx *= -1;
+                    
+                    // Update direction
+                    if (square.direction === 0) square.direction = 1;
+                    else if (square.direction === 1) square.direction = 0;
+                    else if (square.direction === 2) square.direction = 3;
+                    else if (square.direction === 3) square.direction = 2;
+                    
+                    // Keep inside bounds
+                    if (square.x <= 0) square.x = 0;
+                    if (square.x + square.size >= canvas.width) square.x = canvas.width - square.size;
+                }
+                
+                if (square.y <= 0 || square.y + square.size >= canvas.height) {
+                    // Reflect vertically
+                    square.vy *= -1;
+                    
+                    // Update direction
+                    if (square.direction === 0) square.direction = 3;
+                    else if (square.direction === 1) square.direction = 2;
+                    else if (square.direction === 2) square.direction = 1;
+                    else if (square.direction === 3) square.direction = 0;
+                    
+                    // Keep inside bounds
+                    if (square.y <= 0) square.y = 0;
+                    if (square.y + square.size >= canvas.height) square.y = canvas.height - square.size;
+                }
+                
+                // Draw the square with fallback colors
+                ctx.fillStyle = square.isBlue ? BLUE_SQUARE_COLOR : RED_SQUARE_COLOR;
+                ctx.fillRect(square.x, square.y, square.size, square.size);
+                
+                // Draw stroke around the square
+                ctx.strokeStyle = '#333';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(square.x, square.y, square.size, square.size);
+                
+                // Draw thorns if square has them
+                if (square.hasThorns) {
+                    drawThorns(square);
+                }
+            }
+            
+            // Check collision between squares
+            if (checkCollision(squares[0], squares[1])) {
+                handleCollision(squares[0], squares[1]);
+            }
+            
+            // Update health bars
+            updateHealthBars();
+        }
+
+        // Animation loop
+        function animate() {
+            update();
+            requestAnimationFrame(animate);
+        }
+
+        // Start the animation
+        animate();
+        
+        // Initialize the game by spawning first power-ups
+        spawnKnifePowerUp();
+        spawnHealPowerUp();
+        
+        // Initialize health bars
+        updateHealthBars();
+        
+        // Event listeners for buttons
+        // Reset button event listener
+        resetBtn.addEventListener('click', function() {
+            squares = [
+                createSquare(100, 150, 0, '#3498db', true), // Down-right (blue)
+                createSquare(280, 300, 2, '#e74c3c', false)  // Up-left (red)
+            ];
+            
+            powerUps = [];
+            speedMultiplier = 1;
+            isPaused = false;
+            pauseBtn.textContent = 'Pause';
+            
+            // Start spawning power-ups again
+            spawnKnifePowerUp();
+            spawnHealPowerUp();
+            
+            // Update health bars
+            updateHealthBars();
+        });
+
+        pauseBtn.addEventListener('click', function() {
+            isPaused = !isPaused;
+            pauseBtn.textContent = isPaused ? 'Resume' : 'Pause';
+        });
+
+        speedBtn.addEventListener('click', function() {
+            speedMultiplier = (speedMultiplier >= 3) ? 1 : speedMultiplier + 0.5;
+        });
+        
+        // Thorn color picker event listeners
+        redThornColorPicker.addEventListener('change', function() {
+            redThornColor = this.value;
+            updateHealthBars(); // Update health bar colors
+        });
+        
+        blueThornColorPicker.addEventListener('change', function() {
+            blueThornColor = this.value;
+            updateHealthBars(); // Update health bar colors
+        });
+    </script>
+</body>
+</html>
