@@ -18,28 +18,20 @@
             align-items: center;
             gap: 20px;
         }
+        #gameArea {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #healthBars {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 10px;
+        }
         canvas {
             border: 2px solid #333;
             background-color: white;
-        }
-        .health-bars {
-            display: flex;
-            gap: 20px;
-            justify-content: center;
-            margin-bottom: 10px;
-        }
-        .health-bar {
-            width: 200px;
-            height: 20px;
-            border: 2px solid #333;
-            display: flex;
-        }
-        .health-segment {
-            flex: 1;
-            border-right: 1px solid #333;
-        }
-        .health-segment:last-child {
-            border-right: none;
         }
         .controls {
             display: flex;
@@ -72,17 +64,10 @@
 </head>
 <body>
     <div id="container">
-        <div class="health-bars">
-            <div>
-                <div id="redHealthBar" class="health-bar"></div>
-                <div style="text-align: center; font-size: 12px; margin-top: 5px;"></div>
-            </div>
-            <div>
-                <div id="blueHealthBar" class="health-bar"></div>
-                <div style="text-align: center; font-size: 12px; margin-top: 5px;"></div>
-            </div>
+        <div id="gameArea">
+            <div id="healthBars"></div>
+            <canvas id="canvas" width="600" height="400"></canvas>
         </div>
-        <canvas id="canvas" width="600" height="400"></canvas>
         <div class="controls">
             <button id="resetBtn">Reset</button>
             <button id="pauseBtn">Pause</button>
@@ -103,16 +88,13 @@
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         
-        // Get health bar elements
-        const redHealthBar = document.getElementById('redHealthBar');
-        const blueHealthBar = document.getElementById('blueHealthBar');
-        
         // Buttons
         const resetBtn = document.getElementById('resetBtn');
         const pauseBtn = document.getElementById('pauseBtn');
         const speedBtn = document.getElementById('speedBtn');
         const redThornColorPicker = document.getElementById('redThornColor');
         const blueThornColorPicker = document.getElementById('blueThornColor');
+        const healthBarsContainer = document.getElementById('healthBars');
         
         // Game settings
         let isPaused = false;
@@ -126,6 +108,31 @@
         // Speed constant - all squares will move at this speed, but in different directions
         const SPEED = 3;
         
+        // Image objects with loading event listeners
+        const redSquareImg = new Image();
+        redSquareImg.src = "red.png";
+        let redSquareImgLoaded = false;
+        redSquareImg.onload = function() { redSquareImgLoaded = true; };
+        redSquareImg.onerror = function() { console.error("Failed to load red.png"); };
+        
+        const blueSquareImg = new Image();
+        blueSquareImg.src = "blue.png";
+        let blueSquareImgLoaded = false;
+        blueSquareImg.onload = function() { blueSquareImgLoaded = true; };
+        blueSquareImg.onerror = function() { console.error("Failed to load blue.png"); };
+        
+        const knifeImg = new Image();
+        knifeImg.src = "knife.png";
+        let knifeImgLoaded = false;
+        knifeImg.onload = function() { knifeImgLoaded = true; };
+        knifeImg.onerror = function() { console.error("Failed to load knife.png"); };
+        
+        const healImg = new Image();
+        healImg.src = "heal.png";
+        let healImgLoaded = false;
+        healImg.onload = function() { healImgLoaded = true; };
+        healImg.onerror = function() { console.error("Failed to load heal.png"); };
+        
         // Fallback colors for squares when images aren't loaded
         const RED_SQUARE_COLOR = '#e74c3c';
         const BLUE_SQUARE_COLOR = '#3498db';
@@ -137,7 +144,7 @@
         const POWER_UP_SIZE = 30;
         
         // Create squares with 45° angles only
-        function createSquare(x, y, direction, color, isBlue = false) {
+        function createSquare(x, y, direction, color, imageSrc, isBlue = false) {
             // direction can be 0, 1, 2, or 3 for the four diagonal directions
             let vx, vy;
             
@@ -160,6 +167,9 @@
                     break;
             }
             
+            const img = new Image();
+            img.src = imageSrc;
+            
             return {
                 x,
                 y,
@@ -168,6 +178,7 @@
                 size: DEFAULT_SQUARE_SIZE,
                 direction,
                 color,
+                img,
                 hasThorns: false,
                 thornExpiryTime: 0,
                 originalSize: DEFAULT_SQUARE_SIZE,
@@ -178,31 +189,100 @@
         
         // Initialize squares with health
         let squares = [
-            createSquare(100, 150, 0, '#3498db', true), // Down-right (blue)
-            createSquare(280, 300, 2, '#e74c3c', false)  // Up-left (red)
+            createSquare(100, 150, 0, '#3498db', 'blue.png', true), // Down-right (blue)
+            createSquare(280, 300, 2, '#e74c3c', 'red.png', false)  // Up-left (red)
         ];
         
         // Powerups array
         let powerUps = [];
         
-        // Function to update HTML health bars
-        function updateHealthBars() {
-            // Update red health bar
-            redHealthBar.innerHTML = '';
+        // Function to create health bar HTML elements
+        function createHealthBars() {
+            const redHealthBar = document.createElement('div');
+            redHealthBar.id = 'redHealthBar';
+            redHealthBar.style.cssText = `
+                display: flex;
+                border: 2px solid #333;
+                width: 140px;
+                height: 20px;
+                background-color: #ddd;
+            `;
+            
+            const blueHealthBar = document.createElement('div');
+            blueHealthBar.id = 'blueHealthBar';
+            blueHealthBar.style.cssText = `
+                display: flex;
+                border: 2px solid #333;
+                width: 140px;
+                height: 20px;
+                background-color: #ddd;
+            `;
+            
+            // Create 6 segments for each health bar
             for (let i = 0; i < 6; i++) {
-                const segment = document.createElement('div');
-                segment.className = 'health-segment';
-                segment.style.backgroundColor = i < squares[1].health ? redThornColor : '#ddd';
-                redHealthBar.appendChild(segment);
+                const redSegment = document.createElement('div');
+                redSegment.className = 'health-segment red-segment';
+                redSegment.style.cssText = `
+                    flex: 1;
+                    height: 100%;
+                    border-right: ${i < 5 ? '1px solid #333' : 'none'};
+                    background-color: ${redThornColor};
+                `;
+                redHealthBar.appendChild(redSegment);
+                
+                const blueSegment = document.createElement('div');
+                blueSegment.className = 'health-segment blue-segment';
+                blueSegment.style.cssText = `
+                    flex: 1;
+                    height: 100%;
+                    border-right: ${i < 5 ? '1px solid #333' : 'none'};
+                    background-color: ${blueThornColor};
+                `;
+                blueHealthBar.appendChild(blueSegment);
+            }
+            
+            // Add labels
+            const redLabel = document.createElement('div');
+            redLabel.textContent = 'Red Health';
+            redLabel.style.cssText = 'text-align: center; font-size: 12px; margin-top: 5px; font-weight: bold;';
+            
+            const blueLabel = document.createElement('div');
+            blueLabel.textContent = 'Blue Health';
+            blueLabel.style.cssText = 'text-align: center; font-size: 12px; margin-top: 5px; font-weight: bold;';
+            
+            const redContainer = document.createElement('div');
+            redContainer.appendChild(redHealthBar);
+            redContainer.appendChild(redLabel);
+            
+            const blueContainer = document.createElement('div');
+            blueContainer.appendChild(blueHealthBar);
+            blueContainer.appendChild(blueLabel);
+            
+            healthBarsContainer.appendChild(redContainer);
+            healthBarsContainer.appendChild(blueContainer);
+        }
+        
+        // Function to update health bars
+        function updateHealthBars() {
+            const redSegments = document.querySelectorAll('.red-segment');
+            const blueSegments = document.querySelectorAll('.blue-segment');
+            
+            // Update red health bar
+            for (let i = 0; i < 6; i++) {
+                if (i < squares[1].health) {
+                    redSegments[i].style.backgroundColor = redThornColor;
+                } else {
+                    redSegments[i].style.backgroundColor = '#ddd';
+                }
             }
             
             // Update blue health bar
-            blueHealthBar.innerHTML = '';
             for (let i = 0; i < 6; i++) {
-                const segment = document.createElement('div');
-                segment.className = 'health-segment';
-                segment.style.backgroundColor = i < squares[0].health ? blueThornColor : '#ddd';
-                blueHealthBar.appendChild(segment);
+                if (i < squares[0].health) {
+                    blueSegments[i].style.backgroundColor = blueThornColor;
+                } else {
+                    blueSegments[i].style.backgroundColor = '#ddd';
+                }
             }
         }
         
@@ -227,6 +307,8 @@
                 x: position.x,
                 y: position.y,
                 type: 'knife',
+                img: knifeImg,
+                imgLoaded: knifeImgLoaded,
                 size: POWER_UP_SIZE
             });
         }
@@ -244,6 +326,8 @@
                 x: position.x,
                 y: position.y,
                 type: 'heal',
+                img: healImg,
+                imgLoaded: healImgLoaded,
                 size: POWER_UP_SIZE
             });
         }
@@ -369,11 +453,12 @@
             }
         }
         
-        // Function to draw thorns around a square (longer thorns)
+        // Function to draw thorns around a square (made longer)
         function drawThorns(square) {
             const size = square.size;
-            const thornSize = size / 6; // Made thorns longer (was /12, now /4)
-            const thornSpacing = size / 8; // Adjust spacing for longer thorns
+            const thornSize = size / 8; // Made thorns thinner and longer (was /12, now /8 for length)
+            const thornLength = size / 4; // Length of thorns (longer than before)
+            const thornSpacing = thornSize; // More thorns by reducing spacing
             
             // Choose the appropriate thorn color based on whether it's blue or red square
             ctx.fillStyle = square.isBlue ? blueThornColor : redThornColor;
@@ -383,8 +468,8 @@
             for (let i = 0; i < size; i += thornSpacing) {
                 ctx.beginPath();
                 ctx.moveTo(square.x + i, square.y);
-                ctx.lineTo(square.x + i + thornSpacing/2, square.y - thornSize);
-                ctx.lineTo(square.x + i + thornSpacing, square.y);
+                ctx.lineTo(square.x + i + thornSize/2, square.y - thornLength);
+                ctx.lineTo(square.x + i + thornSize, square.y);
                 ctx.closePath();
                 ctx.fill();
             }
@@ -393,8 +478,8 @@
             for (let i = 0; i < size; i += thornSpacing) {
                 ctx.beginPath();
                 ctx.moveTo(square.x + i, square.y + size);
-                ctx.lineTo(square.x + i + thornSpacing/2, square.y + size + thornSize);
-                ctx.lineTo(square.x + i + thornSpacing, square.y + size);
+                ctx.lineTo(square.x + i + thornSize/2, square.y + size + thornLength);
+                ctx.lineTo(square.x + i + thornSize, square.y + size);
                 ctx.closePath();
                 ctx.fill();
             }
@@ -403,8 +488,8 @@
             for (let i = 0; i < size; i += thornSpacing) {
                 ctx.beginPath();
                 ctx.moveTo(square.x, square.y + i);
-                ctx.lineTo(square.x - thornSize, square.y + i + thornSpacing/2);
-                ctx.lineTo(square.x, square.y + i + thornSpacing);
+                ctx.lineTo(square.x - thornLength, square.y + i + thornSize/2);
+                ctx.lineTo(square.x, square.y + i + thornSize);
                 ctx.closePath();
                 ctx.fill();
             }
@@ -413,8 +498,8 @@
             for (let i = 0; i < size; i += thornSpacing) {
                 ctx.beginPath();
                 ctx.moveTo(square.x + size, square.y + i);
-                ctx.lineTo(square.x + size + thornSize, square.y + i + thornSpacing/2);
-                ctx.lineTo(square.x + size, square.y + i + thornSpacing);
+                ctx.lineTo(square.x + size + thornLength, square.y + i + thornSize/2);
+                ctx.lineTo(square.x + size, square.y + i + thornSize);
                 ctx.closePath();
                 ctx.fill();
             }
@@ -434,19 +519,26 @@
             for (let i = powerUps.length - 1; i >= 0; i--) {
                 const powerUp = powerUps[i];
                 
-                // Draw power-up using simple shapes
-                ctx.fillStyle = powerUp.type === 'knife' ? '#ff4757' : '#2ed573';
-                ctx.fillRect(powerUp.x, powerUp.y, powerUp.size, powerUp.size);
-                ctx.strokeStyle = '#333';
-                ctx.strokeRect(powerUp.x, powerUp.y, powerUp.size, powerUp.size);
-                
-                // Add text label
-                ctx.fillStyle = '#fff';
-                ctx.font = '12px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText(powerUp.type === 'knife' ? 'K' : 'H', 
-                           powerUp.x + powerUp.size/2, 
-                           powerUp.y + powerUp.size/2 + 4);
+                // Draw power-up (use try-catch to handle image loading errors)
+                try {
+                    if (powerUp.type === 'knife' && knifeImgLoaded) {
+                        ctx.drawImage(powerUp.img, powerUp.x, powerUp.y, powerUp.size, powerUp.size);
+                    } else if (powerUp.type === 'heal' && healImgLoaded) {
+                        ctx.drawImage(powerUp.img, powerUp.x, powerUp.y, powerUp.size, powerUp.size);
+                    } else {
+                        // Fallback if image is not loaded
+                        ctx.fillStyle = powerUp.type === 'knife' ? '#ff4757' : '#2ed573';
+                        ctx.fillRect(powerUp.x, powerUp.y, powerUp.size, powerUp.size);
+                        ctx.strokeStyle = '#333';
+                        ctx.strokeRect(powerUp.x, powerUp.y, powerUp.size, powerUp.size);
+                    }
+                } catch (e) {
+                    // If drawing the image fails, use a fallback colored rectangle
+                    ctx.fillStyle = powerUp.type === 'knife' ? '#ff4757' : '#2ed573';
+                    ctx.fillRect(powerUp.x, powerUp.y, powerUp.size, powerUp.size);
+                    ctx.strokeStyle = '#333';
+                    ctx.strokeRect(powerUp.x, powerUp.y, powerUp.size, powerUp.size);
+                }
                 
                 // Check collision with squares
                 for (let j = 0; j < squares.length; j++) {
@@ -524,9 +616,20 @@
                     if (square.y + square.size >= canvas.height) square.y = canvas.height - square.size;
                 }
                 
-                // Draw the square with fallback colors
-                ctx.fillStyle = square.isBlue ? BLUE_SQUARE_COLOR : RED_SQUARE_COLOR;
-                ctx.fillRect(square.x, square.y, square.size, square.size);
+                // Draw the square with its image (with fallback)
+                try {
+                    if ((square.isBlue && blueSquareImgLoaded) || (!square.isBlue && redSquareImgLoaded)) {
+                        ctx.drawImage(square.img, square.x, square.y, square.size, square.size);
+                    } else {
+                        // Fallback if image is not loaded
+                        ctx.fillStyle = square.isBlue ? BLUE_SQUARE_COLOR : RED_SQUARE_COLOR;
+                        ctx.fillRect(square.x, square.y, square.size, square.size);
+                    }
+                } catch (e) {
+                    // If drawing the image fails, use a fallback colored rectangle
+                    ctx.fillStyle = square.isBlue ? BLUE_SQUARE_COLOR : RED_SQUARE_COLOR;
+                    ctx.fillRect(square.x, square.y, square.size, square.size);
+                }
                 
                 // Draw stroke around the square
                 ctx.strokeStyle = '#333';
@@ -561,15 +664,15 @@
         spawnKnifePowerUp();
         spawnHealPowerUp();
         
-        // Initialize health bars
-        updateHealthBars();
+        // Create health bars
+        createHealthBars();
         
         // Event listeners for buttons
         // Reset button event listener
         resetBtn.addEventListener('click', function() {
             squares = [
-                createSquare(100, 150, 0, '#3498db', true), // Down-right (blue)
-                createSquare(280, 300, 2, '#e74c3c', false)  // Up-left (red)
+                createSquare(100, 150, 0, '#3498db', 'blue.png', true), // Down-right (blue)
+                createSquare(280, 300, 2, '#e74c3c', 'red.png', false)  // Up-left (red)
             ];
             
             powerUps = [];
