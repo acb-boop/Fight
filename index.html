@@ -194,7 +194,7 @@
         const DEFAULT_SQUARE_SIZE = 60;
         
         // Speed constant - all squares will move at this speed, but in different directions
-        const SPEED = 3,5;
+        const SPEED = 3;
         
         // Image objects with loading event listeners
         const redSquareImg = new Image();
@@ -469,11 +469,11 @@
             // Check if thorned square is hitting the normal square
             if (square1.hasThorns && !square2.hasThorns) {
                 // Reduce size of square2 and remove thorns from all squares
-                square2.size = Math.max(20, square2.size - 15);
+                square2.size = Math.max(15, square2.size - 15);
                 squares.forEach(sq => sq.hasThorns = false);
             } else if (square2.hasThorns && !square1.hasThorns) {
                 // Reduce size of square1 and remove thorns from all squares
-                square1.size = Math.max(20, square1.size - 15);
+                square1.size = Math.max(15, square1.size - 15);
                 squares.forEach(sq => sq.hasThorns = false);
             }
         }
@@ -645,8 +645,8 @@
             blueSquareHealth = calculateHealth(squares[0].size); // Blue square is index 0
             
             // Update health bar displays
-            updateHealthBar(redHealthBar, redSquareHealth, 6, redHealthColor);
-            updateHealthBar(blueHealthBar, blueSquareHealth, 6, blueHealthColor);
+            updateHealthBar(redHealthBar, redSquareHealth, 4, redHealthColor);
+            updateHealthBar(blueHealthBar, blueSquareHealth, 4, blueHealthColor);
             
             // Check collision between squares
             if (checkCollision(squares[0], squares[1])) {
