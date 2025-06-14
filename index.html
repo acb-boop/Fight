@@ -121,13 +121,11 @@
                         <div class="health-segment"></div>
                         <div class="health-segment"></div>
                         <div class="health-segment"></div>
-                        <div class="health-segment"></div>
                     </div>
                 </div>
                 <div class="health-bar">
                     <div class="health-bar-label"></div>
                     <div class="health-bar-container" id="blueHealthBar">
-                        <div class="health-segment"></div>
                         <div class="health-segment"></div>
                         <div class="health-segment"></div>
                         <div class="health-segment"></div>
@@ -183,20 +181,20 @@
         // Game settings
         let isPaused = false;
         let speedMultiplier = 1;
-        let redThornColor = "#FF5733"; // Default red square thorn color
-        let blueThornColor = "#33FFF6"; // Default blue square thorn color
+        let redThornColor = "#BEBEBE"; // Default red square thorn color
+        let blueThornColor = "#BEBEBE"; // Default blue square thorn color
         let redHealthColor = "#e74c3c"; // Default red health bar color
         let blueHealthColor = "#3498db"; // Default blue health bar color
         
         // Health tracking
-        let redSquareHealth = 5; // Max 6 segments
-        let blueSquareHealth = 5; // Max 6 segments
+        let redSquareHealth = 4; // Max 6 segments
+        let blueSquareHealth = 4; // Max 6 segments
         
         // Default square properties
         const DEFAULT_SQUARE_SIZE = 60;
         
         // Speed constant - all squares will move at this speed, but in different directions
-        const SPEED = 3;
+        const SPEED = 3,5;
         
         // Image objects with loading event listeners
         const redSquareImg = new Image();
@@ -248,11 +246,10 @@
         // Function to calculate health based on square size
         function calculateHealth(size) {
             // Health decreases as size decreases from 60 to 20
-            if (size >= 60) return 5;
-            if (size >= 50) return 4;
-            if (size >= 40) return 3;
+            if (size >= 60) return 4;
+            if (size >= 45) return 3;
             if (size >= 30) return 2;
-            if (size >= 25) return 1;
+            if (size >= 15) return 1;
             return 1;
         }
         
@@ -472,11 +469,11 @@
             // Check if thorned square is hitting the normal square
             if (square1.hasThorns && !square2.hasThorns) {
                 // Reduce size of square2 and remove thorns from all squares
-                square2.size = Math.max(20, square2.size - 10);
+                square2.size = Math.max(20, square2.size - 15);
                 squares.forEach(sq => sq.hasThorns = false);
             } else if (square2.hasThorns && !square1.hasThorns) {
                 // Reduce size of square1 and remove thorns from all squares
-                square1.size = Math.max(20, square1.size - 10);
+                square1.size = Math.max(20, square1.size - 15);
                 squares.forEach(sq => sq.hasThorns = false);
             }
         }
@@ -567,7 +564,7 @@
                             setTimeout(spawnKnifePowerUp, KNIFE_SPAWN_INTERVAL);
                         } else if (powerUp.type === 'heal') {
                             // Increase square size by 10px up to maximum of 60px
-                            square.size = Math.min(60, square.size + 10);
+                            square.size = Math.min(60, square.size + 15);
                             
                             // Schedule next heal spawn after interval
                             setTimeout(spawnHealPowerUp, HEAL_SPAWN_INTERVAL);
@@ -683,8 +680,8 @@
             pauseBtn.textContent = 'Pause';
             
             // Reset health
-            redSquareHealth = 6;
-            blueSquareHealth = 6;
+            redSquareHealth = 4;
+            blueSquareHealth = 4;
             
             // Spawn knife immediately on reset
             spawnKnifePowerUp();
@@ -731,8 +728,8 @@
         });
         
         // Initialize health bars with default colors
-        updateHealthBar(redHealthBar, redSquareHealth, 6, redHealthColor);
-        updateHealthBar(blueHealthBar, blueSquareHealth, 6, blueHealthColor);
+        updateHealthBar(redHealthBar, redSquareHealth, 4, redHealthColor);
+        updateHealthBar(blueHealthBar, blueSquareHealth, 4, blueHealthColor);
     </script>
 </body>
 </html>
