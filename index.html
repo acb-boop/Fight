@@ -1,16 +1,17 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Enhanced Bouncing Squares Simulation</title>
+    <title>Enhanced Bouncing Squares Simulation with Screen Recorder</title>
     <style>
         body {
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
             background-color: #f0f0f0;
             font-family: Arial, sans-serif;
+            padding: 20px;
         }
         #container {
             display: flex;
@@ -68,6 +69,37 @@
             flex-wrap: wrap;
             justify-content: center;
         }
+        .recorder-controls {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+            padding: 15px;
+            background-color: #e8e8e8;
+            border-radius: 8px;
+            border: 2px solid #ccc;
+        }
+        .recorder-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: bold;
+        }
+        .recording-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #ccc;
+        }
+        .recording-indicator.active {
+            background-color: #e74c3c;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
         button {
             padding: 8px 16px;
             background-color: #4CAF50;
@@ -79,6 +111,28 @@
         }
         button:hover {
             background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .record-btn {
+            background-color: #e74c3c;
+        }
+        .record-btn:hover {
+            background-color: #c0392b;
+        }
+        .stop-btn {
+            background-color: #34495e;
+        }
+        .stop-btn:hover {
+            background-color: #2c3e50;
+        }
+        .download-btn {
+            background-color: #3498db;
+        }
+        .download-btn:hover {
+            background-color: #2980b9;
         }
         .color-picker {
             display: flex;
@@ -108,6 +162,12 @@
             width: 80px;
             text-align: center;
         }
+        .recorder-info {
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
@@ -133,8 +193,23 @@
                     </div>
                 </div>
             </div>
-            <canvas id="canvas" width="600" height="400"></canvas>
+            <canvas id="canvas" width="1080" height="720"></canvas>
         </div>
+        
+        <!-- Screen Recorder Controls -->
+        <div class="recorder-controls">
+            <div class="recorder-status">
+                <div class="recording-indicator" id="recordingIndicator"></div>
+                <span id="recordingStatus">Ready to Record</span>
+            </div>
+            <button id="startRecordBtn" class="record-btn">Start Recording</button>
+            <button id="stopRecordBtn" class="stop-btn" disabled>Stop Recording</button>
+            <button id="downloadBtn" class="download-btn" disabled>Download Video</button>
+            <div class="recorder-info">
+                Records at 120fps in 1080p resolution
+            </div>
+        </div>
+        
         <div class="controls">
             <button id="resetBtn">Reset</button>
             <button id="pauseBtn">Pause</button>
@@ -174,6 +249,18 @@
         const redHealthColorInput = document.getElementById('redHealthColor');
         const blueHealthColorInput = document.getElementById('blueHealthColor');
         
+        // Screen Recorder Elements
+        const startRecordBtn = document.getElementById('startRecordBtn');
+        const stopRecordBtn = document.getElementById('stopRecordBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const recordingIndicator = document.getElementById('recordingIndicator');
+        const recordingStatus = document.getElementById('recordingStatus');
+        
+        // Recording variables
+        let mediaRecorder = null;
+        let recordedChunks = [];
+        let isRecording = false;
+        
         // Health bar elements
         const redHealthBar = document.getElementById('redHealthBar');
         const blueHealthBar = document.getElementById('blueHealthBar');
@@ -181,55 +268,132 @@
         // Game settings
         let isPaused = false;
         let speedMultiplier = 1;
-        let redThornColor = "#BEBEBE"; // Default red square thorn color
-        let blueThornColor = "#BEBEBE"; // Default blue square thorn color
-        let redHealthColor = "#e74c3c"; // Default red health bar color
-        let blueHealthColor = "#3498db"; // Default blue health bar color
+        let redThornColor = "#BEBEBE";
+        let blueThornColor = "#BEBEBE";
+        let redHealthColor = "#e74c3c";
+        let blueHealthColor = "#3498db";
         
         // Health tracking
-        let redSquareHealth = 4; // Max 6 segments
-        let blueSquareHealth = 4; // Max 6 segments
+        let redSquareHealth = 4;
+        let blueSquareHealth = 4;
         
         // Default square properties
         const DEFAULT_SQUARE_SIZE = 60;
         
-        // Speed constant - all squares will move at this speed, but in different directions
+        // Speed constant
         const SPEED = 3;
         
         // Image objects with loading event listeners
         const redSquareImg = new Image();
-        redSquareImg.src = "red.png";
-        let redSquareImgLoaded = false;
-        redSquareImg.onload = function() { redSquareImgLoaded = true; };
-        redSquareImg.onerror = function() { console.error("Failed to load red.png"); };
+        redSquareImg.src = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiBmaWxsPSIjZTc0YzNjIi8+Cjwvc3ZnPgo=";
+        let redSquareImgLoaded = true;
         
         const blueSquareImg = new Image();
-        blueSquareImg.src = "blue.png";
-        let blueSquareImgLoaded = false;
-        blueSquareImg.onload = function() { blueSquareImgLoaded = true; };
-        blueSquareImg.onerror = function() { console.error("Failed to load blue.png"); };
+        blueSquareImg.src = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiBmaWxsPSIjMzQ5OGRiIi8+Cjwvc3ZnPgo=";
+        let blueSquareImgLoaded = true;
         
         const knifeImg = new Image();
-        knifeImg.src = "knife.png";
-        let knifeImgLoaded = false;
-        knifeImg.onload = function() { knifeImgLoaded = true; };
-        knifeImg.onerror = function() { console.error("Failed to load knife.png"); };
+        knifeImg.src = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAiIGhlaWdodD0iMzAiIHZpZXdCb3g9IjAgMCAzMCAzMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTE1IDVMMjUgMTVMMTUgMjVMNSAxNUwxNSA1WiIgZmlsbD0iIzk1YTVhNiIvPgo8cGF0aCBkPSJNMTUgOEwyMiAxNUwxNSAyMkw4IDE1TDE1IDhaIiBmaWxsPSIjZWNmMGYxIi8+Cjwvc3ZnPgo=";
+        let knifeImgLoaded = true;
         
         const healImg = new Image();
-        healImg.src = "heal.png";
-        let healImgLoaded = false;
-        healImg.onload = function() { healImgLoaded = true; };
-        healImg.onerror = function() { console.error("Failed to load heal.png"); };
+        healImg.src = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAiIGhlaWdodD0iMzAiIHZpZXdCb3g9IjAgMCAzMCAzMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTUiIGN5PSIxNSIgcj0iMTIiIGZpbGw9IiMyN2FlNjAiLz4KPHBhdGggZD0iTTE1IDhWMjJNOCAxNUgyMiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KPC9zdmc+Cg==";
+        let healImgLoaded = true;
         
-        // Fallback colors for squares when images aren't loaded
+        // Fallback colors for squares
         const RED_SQUARE_COLOR = '#e74c3c';
         const BLUE_SQUARE_COLOR = '#3498db';
         
         // Powerup properties
-        const KNIFE_SPAWN_INTERVAL = 8000; // 8 seconds
-        const HEAL_SPAWN_INTERVAL = 15000; // 15 seconds
-        const THORN_DURATION = 7000; // 7 seconds
+        const KNIFE_SPAWN_INTERVAL = 8000;
+        const HEAL_SPAWN_INTERVAL = 15000;
+        const THORN_DURATION = 7000;
         const POWER_UP_SIZE = 30;
+        
+        // Screen Recording Functions
+        async function startRecording() {
+            try {
+                recordedChunks = [];
+                
+                // Create a stream from the canvas
+                const stream = canvas.captureStream(120); // 120 FPS
+                
+                // Set up MediaRecorder with high quality settings
+                const options = {
+                    mimeType: 'video/webm;codecs=vp9',
+                    videoBitsPerSecond: 8000000 // 8 Mbps for high quality
+                };
+                
+                // Fallback for browsers that don't support VP9
+                if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                    options.mimeType = 'video/webm;codecs=vp8';
+                }
+                
+                // Final fallback
+                if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                    options.mimeType = 'video/webm';
+                }
+                
+                mediaRecorder = new MediaRecorder(stream, options);
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        recordedChunks.push(event.data);
+                    }
+                };
+                
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                    const url = URL.createObjectURL(blob);
+                    
+                    // Enable download button
+                    downloadBtn.disabled = false;
+                    downloadBtn.onclick = () => {
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `bouncing-squares-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.webm`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                    };
+                    
+                    // Update UI
+                    recordingStatus.textContent = 'Recording Complete - Ready to Download';
+                    recordingIndicator.classList.remove('active');
+                };
+                
+                // Start recording
+                mediaRecorder.start();
+                isRecording = true;
+                
+                // Update UI
+                startRecordBtn.disabled = true;
+                stopRecordBtn.disabled = false;
+                downloadBtn.disabled = true;
+                recordingStatus.textContent = 'Recording...';
+                recordingIndicator.classList.add('active');
+                
+            } catch (error) {
+                console.error('Error starting recording:', error);
+                alert('Error starting recording. Please make sure your browser supports canvas recording.');
+            }
+        }
+        
+        function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                
+                // Update UI
+                startRecordBtn.disabled = false;
+                stopRecordBtn.disabled = true;
+                recordingStatus.textContent = 'Processing...';
+            }
+        }
+        
+        // Event listeners for recording controls
+        startRecordBtn.addEventListener('click', startRecording);
+        stopRecordBtn.addEventListener('click', stopRecording);
         
         // Function to update health bar display
         function updateHealthBar(healthBar, health, maxHealth, color) {
@@ -245,7 +409,6 @@
         
         // Function to calculate health based on square size
         function calculateHealth(size) {
-            // Health decreases as size decreases from 60 to 20
             if (size >= 60) return 4;
             if (size >= 45) return 3;
             if (size >= 30) return 2;
@@ -255,30 +418,28 @@
         
         // Create squares with 45° angles only
         function createSquare(x, y, direction, color, imageSrc, isBlue = false) {
-            // direction can be 0, 1, 2, or 3 for the four diagonal directions
             let vx, vy;
             
             switch(direction) {
-                case 0: // 45° - down-right
+                case 0:
                     vx = SPEED;
                     vy = SPEED;
                     break;
-                case 1: // 135° - down-left
+                case 1:
                     vx = -SPEED;
                     vy = SPEED;
                     break;
-                case 2: // 225° - up-left
+                case 2:
                     vx = -SPEED;
                     vy = -SPEED;
                     break;
-                case 3: // 315° - up-right
+                case 3:
                     vx = SPEED;
                     vy = -SPEED;
                     break;
             }
             
-            const img = new Image();
-            img.src = imageSrc;
+            const img = isBlue ? blueSquareImg : redSquareImg;
             
             return {
                 x,
@@ -292,14 +453,14 @@
                 hasThorns: false,
                 thornExpiryTime: 0,
                 originalSize: DEFAULT_SQUARE_SIZE,
-                isBlue // Flag to identify if it's the blue square
+                isBlue
             };
         }
         
         // Initialize squares
         let squares = [
-            createSquare(100, 150, 0, '#3498db', 'blue.png', true), // Down-right (blue)
-            createSquare(280, 300, 2, '#e74c3c', 'red.png', false)  // Up-left (red)
+            createSquare(200, 200, 0, '#3498db', 'blue.png', true),
+            createSquare(500, 400, 2, '#e74c3c', 'red.png', false)
         ];
         
         // Powerups array
@@ -316,15 +477,12 @@
         // Function to spawn a knife power-up
         function spawnKnifePowerUp() {
             if (isPaused) {
-                // If game is paused, try again later
                 setTimeout(spawnKnifePowerUp, 1000);
                 return;
             }
             
-            // Check if knife already exists
             const knifeExists = powerUps.some(powerUp => powerUp.type === 'knife');
             if (knifeExists) {
-                // Schedule next attempt
                 setTimeout(spawnKnifePowerUp, KNIFE_SPAWN_INTERVAL);
                 return;
             }
@@ -343,7 +501,6 @@
         // Function to spawn a heal power-up
         function spawnHealPowerUp() {
             if (isPaused) {
-                // If game is paused, try again later
                 setTimeout(spawnHealPowerUp, 1000);
                 return;
             }
@@ -377,15 +534,12 @@
 
         // Determine which side of square2 was hit by square1
         function getCollisionSide(square1, square2) {
-            // Calculate centers
             const center1 = { x: square1.x + square1.size / 2, y: square1.y + square1.size / 2 };
             const center2 = { x: square2.x + square2.size / 2, y: square2.y + square2.size / 2 };
             
-            // Calculate relative position
             const dx = center1.x - center2.x;
             const dy = center1.y - center2.y;
             
-            // Determine collision side based on approach angle
             if (Math.abs(dx) > Math.abs(dy)) {
                 return dx > 0 ? "right" : "left";
             } else {
@@ -395,11 +549,9 @@
 
         // Function to handle collision between two squares with reflective physics
         function handleCollision(square1, square2) {
-            // Determine which side was hit
             const side1 = getCollisionSide(square1, square2);
             const side2 = getCollisionSide(square2, square1);
             
-            // Apply reflective bouncing for square1
             if (side1 === "left" || side1 === "right") {
                 square1.vx *= -1;
                 
@@ -418,7 +570,6 @@
                 }
             }
             
-            // Apply reflective bouncing for square2
             if (side2 === "left" || side2 === "right") {
                 square2.vx *= -1;
                 
@@ -437,7 +588,6 @@
                 }
             }
             
-            // Move squares apart to prevent sticking
             const center1 = { x: square1.x + square1.size / 2, y: square1.y + square1.size / 2 };
             const center2 = { x: square2.x + square2.size / 2, y: square2.y + square2.size / 2 };
             
@@ -466,13 +616,10 @@
                 }
             }
             
-            // Check if thorned square is hitting the normal square
             if (square1.hasThorns && !square2.hasThorns) {
-                // Reduce size of square2 and remove thorns from all squares
                 square2.size = Math.max(15, square2.size - 15);
                 squares.forEach(sq => sq.hasThorns = false);
             } else if (square2.hasThorns && !square1.hasThorns) {
-                // Reduce size of square1 and remove thorns from all squares
                 square1.size = Math.max(15, square1.size - 15);
                 squares.forEach(sq => sq.hasThorns = false);
             }
@@ -481,12 +628,10 @@
         // Function to draw thorns around a square
         function drawThorns(square) {
             const size = square.size;
-            const thornSize = size / 12; // Thinner thorns
+            const thornSize = size / 12;
             
-            // Choose the appropriate thorn color based on whether it's blue or red square
             ctx.fillStyle = square.isBlue ? blueThornColor : redThornColor;
             
-            // Draw thorns on all sides
             // Top side
             for (let i = 0; i < size; i += thornSize * 2) {
                 ctx.beginPath();
@@ -532,51 +677,39 @@
         function update() {
             if (isPaused) return;
             
-            // Get the current time
             const currentTime = Date.now();
             
-            // Clear the canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
             // Update and draw power-ups
             for (let i = powerUps.length - 1; i >= 0; i--) {
                 const powerUp = powerUps[i];
                 
-                // Draw power-up
                 ctx.drawImage(powerUp.img, powerUp.x, powerUp.y, powerUp.size, powerUp.size);
                 
-                // Check collision with squares
                 let powerUpCollected = false;
                 for (let j = 0; j < squares.length; j++) {
                     const square = squares[j];
                     
                     if (checkPowerUpCollision(square, powerUp)) {
-                        // Handle power-up effect
                         if (powerUp.type === 'knife') {
-                            // Remove thorns from all squares first
                             squares.forEach(sq => sq.hasThorns = false);
                             
-                            // Add thorns to the square that collected it
                             square.hasThorns = true;
                             square.thornExpiryTime = currentTime + THORN_DURATION;
                             
-                            // Schedule next knife spawn after interval
                             setTimeout(spawnKnifePowerUp, KNIFE_SPAWN_INTERVAL);
                         } else if (powerUp.type === 'heal') {
-                            // Increase square size by 10px up to maximum of 60px
                             square.size = Math.min(60, square.size + 15);
                             
-                            // Schedule next heal spawn after interval
                             setTimeout(spawnHealPowerUp, HEAL_SPAWN_INTERVAL);
                         }
                         
-                        // Mark power-up for removal
                         powerUpCollected = true;
                         break;
                     }
                 }
                 
-                // Remove the power-up if it was collected
                 if (powerUpCollected) {
                     powerUps.splice(i, 1);
                 }
@@ -645,8 +778,8 @@
             blueSquareHealth = calculateHealth(squares[0].size); // Blue square is index 0
             
             // Update health bar displays
-            updateHealthBar(redHealthBar, redSquareHealth, 4, redHealthColor);
-            updateHealthBar(blueHealthBar, blueSquareHealth, 4, blueHealthColor);
+            updateHealthBar(redHealthBar, redSquareHealth, 6, redHealthColor);
+            updateHealthBar(blueHealthBar, blueSquareHealth, 6, blueHealthColor);
             
             // Check collision between squares
             if (checkCollision(squares[0], squares[1])) {
@@ -680,8 +813,8 @@
             pauseBtn.textContent = 'Pause';
             
             // Reset health
-            redSquareHealth = 4;
-            blueSquareHealth = 4;
+            redSquareHealth = 6;
+            blueSquareHealth = 6;
             
             // Spawn knife immediately on reset
             spawnKnifePowerUp();
@@ -728,8 +861,8 @@
         });
         
         // Initialize health bars with default colors
-        updateHealthBar(redHealthBar, redSquareHealth, 4, redHealthColor);
-        updateHealthBar(blueHealthBar, blueSquareHealth, 4, blueHealthColor);
+        updateHealthBar(redHealthBar, redSquareHealth, 6, redHealthColor);
+        updateHealthBar(blueHealthBar, blueSquareHealth, 6, blueHealthColor);
     </script>
 </body>
 </html>
