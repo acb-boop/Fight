@@ -152,6 +152,16 @@
             align-items: center;
             gap: 5px;
         }
+        .background-color-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
         label {
             font-weight: bold;
         }
@@ -161,6 +171,14 @@
             border-radius: 4px;
             width: 80px;
             text-align: center;
+        }
+        .color-picker-input {
+            width: 50px;
+            height: 30px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 0;
+            cursor: pointer;
         }
         .recorder-info {
             font-size: 12px;
@@ -210,6 +228,14 @@
             </div>
         </div>
         
+        <!-- Background Color Control -->
+        <div class="background-color-control">
+            <label for="backgroundColorText">Canvas Background Color:</label>
+            <input type="text" id="backgroundColorText" class="color-input" value="#ffffff" placeholder="#RRGGBB">
+            <input type="color" id="backgroundColorPicker" class="color-picker-input" value="#ffffff">
+            <button id="applyBackgroundBtn">Apply</button>
+        </div>
+        
         <div class="controls">
             <button id="resetBtn">Reset</button>
             <button id="pauseBtn">Pause</button>
@@ -227,11 +253,11 @@
         </div>
         <div class="color-picker">
             <label for="redThornColor">Red Square Thorn Color:</label>
-            <input type="text" id="redThornColor" class="color-input" value="#FF5733" placeholder="#RRGGBB">
+            <input type="text" id="redThornColor" class="color-input" value="#BEBEBE" placeholder="#RRGGBB">
         </div>
         <div class="color-picker">
             <label for="blueThornColor">Blue Square Thorn Color:</label>
-            <input type="text" id="blueThornColor" class="color-input" value="#33FFF6" placeholder="#RRGGBB">
+            <input type="text" id="blueThornColor" class="color-input" value="#BEBEBE" placeholder="#RRGGBB">
         </div>
     </div>
 
@@ -248,6 +274,11 @@
         const blueThornColorInput = document.getElementById('blueThornColor');
         const redHealthColorInput = document.getElementById('redHealthColor');
         const blueHealthColorInput = document.getElementById('blueHealthColor');
+        
+        // Background color controls
+        const backgroundColorText = document.getElementById('backgroundColorText');
+        const backgroundColorPicker = document.getElementById('backgroundColorPicker');
+        const applyBackgroundBtn = document.getElementById('applyBackgroundBtn');
         
         // Screen Recorder Elements
         const startRecordBtn = document.getElementById('startRecordBtn');
@@ -272,32 +303,33 @@
         let blueThornColor = "#BEBEBE";
         let redHealthColor = "#e74c3c";
         let blueHealthColor = "#3498db";
+        let canvasBackgroundColor = "#ffffff"; // Default white background
         
         // Health tracking
         let redSquareHealth = 4;
         let blueSquareHealth = 4;
         
         // Default square properties
-        const DEFAULT_SQUARE_SIZE = 60;
+        const DEFAULT_SQUARE_SIZE = 120;
         
         // Speed constant
-        const SPEED = 3;
+        const SPEED = 6;
         
         // Image objects with loading event listeners
         const redSquareImg = new Image();
-        redSquareImg.src = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiBmaWxsPSIjZTc0YzNjIi8+Cjwvc3ZnPgo=";
+        redSquareImg.src = "red.png";
         let redSquareImgLoaded = true;
         
         const blueSquareImg = new Image();
-        blueSquareImg.src = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiBmaWxsPSIjMzQ5OGRiIi8+Cjwvc3ZnPgo=";
+        blueSquareImg.src = "blue.png";
         let blueSquareImgLoaded = true;
         
         const knifeImg = new Image();
-        knifeImg.src = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAiIGhlaWdodD0iMzAiIHZpZXdCb3g9IjAgMCAzMCAzMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTE1IDVMMjUgMTVMMTUgMjVMNSAxNUwxNSA1WiIgZmlsbD0iIzk1YTVhNiIvPgo8cGF0aCBkPSJNMTUgOEwyMiAxNUwxNSAyMkw4IDE1TDE1IDhaIiBmaWxsPSIjZWNmMGYxIi8+Cjwvc3ZnPgo=";
+        knifeImg.src = "knife.png";
         let knifeImgLoaded = true;
         
         const healImg = new Image();
-        healImg.src = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAiIGhlaWdodD0iMzAiIHZpZXdCb3g9IjAgMCAzMCAzMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTUiIGN5PSIxNSIgcj0iMTIiIGZpbGw9IiMyN2FlNjAiLz4KPHBhdGggZD0iTTE1IDhWMjJNOCAxNUgyMiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KPC9zdmc+Cg==";
+        healImg.src = "heal.png";
         let healImgLoaded = true;
         
         // Fallback colors for squares
@@ -308,7 +340,33 @@
         const KNIFE_SPAWN_INTERVAL = 8000;
         const HEAL_SPAWN_INTERVAL = 15000;
         const THORN_DURATION = 7000;
-        const POWER_UP_SIZE = 30;
+        const POWER_UP_SIZE = 60;
+        
+        // Background color control functions
+        function applyBackgroundColor(color) {
+            if (isValidHexColor(color)) {
+                canvasBackgroundColor = color;
+                canvas.style.backgroundColor = color;
+                backgroundColorText.value = color;
+                backgroundColorPicker.value = color;
+            }
+        }
+        
+        // Event listeners for background color controls
+        applyBackgroundBtn.addEventListener('click', function() {
+            const color = backgroundColorText.value;
+            applyBackgroundColor(color);
+        });
+        
+        backgroundColorPicker.addEventListener('input', function() {
+            applyBackgroundColor(this.value);
+        });
+        
+        backgroundColorText.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                applyBackgroundColor(this.value);
+            }
+        });
         
         // Screen Recording Functions
         async function startRecording() {
@@ -409,10 +467,10 @@
         
         // Function to calculate health based on square size
         function calculateHealth(size) {
-            if (size >= 60) return 4;
-            if (size >= 45) return 3;
-            if (size >= 30) return 2;
-            if (size >= 15) return 1;
+            if (size >= 120) return 4;
+            if (size >= 90) return 3;
+            if (size >= 60) return 2;
+            if (size >= 30) return 1;
             return 1;
         }
         
@@ -617,10 +675,10 @@
             }
             
             if (square1.hasThorns && !square2.hasThorns) {
-                square2.size = Math.max(15, square2.size - 15);
+                square2.size = Math.max(30, square2.size - 30);
                 squares.forEach(sq => sq.hasThorns = false);
             } else if (square2.hasThorns && !square1.hasThorns) {
-                square1.size = Math.max(15, square1.size - 15);
+                square1.size = Math.max(30, square1.size - 30);
                 squares.forEach(sq => sq.hasThorns = false);
             }
         }
@@ -628,7 +686,7 @@
         // Function to draw thorns around a square
         function drawThorns(square) {
             const size = square.size;
-            const thornSize = size / 12;
+            const thornSize = size / 24;
             
             ctx.fillStyle = square.isBlue ? blueThornColor : redThornColor;
             
@@ -679,7 +737,9 @@
             
             const currentTime = Date.now();
             
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Clear canvas with the selected background color
+            ctx.fillStyle = canvasBackgroundColor;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
             
             // Update and draw power-ups
             for (let i = powerUps.length - 1; i >= 0; i--) {
@@ -700,7 +760,7 @@
                             
                             setTimeout(spawnKnifePowerUp, KNIFE_SPAWN_INTERVAL);
                         } else if (powerUp.type === 'heal') {
-                            square.size = Math.min(60, square.size + 15);
+                            square.size = Math.min(120, square.size + 30);
                             
                             setTimeout(spawnHealPowerUp, HEAL_SPAWN_INTERVAL);
                         }
@@ -813,8 +873,8 @@
             pauseBtn.textContent = 'Pause';
             
             // Reset health
-            redSquareHealth = 6;
-            blueSquareHealth = 6;
+            redSquareHealth = 4;
+            blueSquareHealth = 4;
             
             // Spawn knife immediately on reset
             spawnKnifePowerUp();
@@ -861,8 +921,8 @@
         });
         
         // Initialize health bars with default colors
-        updateHealthBar(redHealthBar, redSquareHealth, 6, redHealthColor);
-        updateHealthBar(blueHealthBar, blueSquareHealth, 6, blueHealthColor);
+        updateHealthBar(redHealthBar, redSquareHealth, 4, redHealthColor);
+        updateHealthBar(blueHealthBar, blueSquareHealth, 4, blueHealthColor);
     </script>
 </body>
-</html>
+    </html>
