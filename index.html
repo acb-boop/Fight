@@ -162,16 +162,6 @@
             border-radius: 8px;
             border: 1px solid #ddd;
         }
-        .sound-controls {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-top: 10px;
-            padding: 10px;
-            background-color: #f9f9f9;
-            border-radius: 8px;
-            border: 1px solid #ddd;
-        }
         label {
             font-weight: bold;
         }
@@ -196,17 +186,15 @@
             text-align: center;
             margin-top: 5px;
         }
-        .sound-toggle {
-            background-color: #27ae60;
-        }
-        .sound-toggle:hover {
-            background-color: #229954;
-        }
-        .sound-toggle.disabled {
-            background-color: #e74c3c;
-        }
-        .sound-toggle.disabled:hover {
-            background-color: #c0392b;
+        .sound-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            border: 1px solid #ddd;
         }
     </style>
 </head>
@@ -236,13 +224,6 @@
             <canvas id="canvas" width="1080" height="720"></canvas>
         </div>
         
-        <!-- Sound Controls -->
-        <div class="sound-controls">
-            <label>Sound Effects:</label>
-            <button id="soundToggle" class="sound-toggle">Sound: ON</button>
-            <span style="font-size: 12px; color: #666;">Red.wav for normal collisions, Hit.wav for thorn damage</span>
-        </div>
-        
         <!-- Screen Recorder Controls -->
         <div class="recorder-controls">
             <div class="recorder-status">
@@ -255,6 +236,13 @@
             <div class="recorder-info">
                 Records at 120fps in 1080p resolution
             </div>
+        </div>
+        
+        <!-- Sound Controls -->
+        <div class="sound-controls">
+            <label for="soundToggle">Sound Effects:</label>
+            <button id="soundToggle">Enable Sound</button>
+            <span id="soundStatus">Disabled</span>
         </div>
         
         <!-- Background Color Control -->
@@ -312,6 +300,7 @@
         const redHealthColorInput = document.getElementById('redHealthColor');
         const blueHealthColorInput = document.getElementById('blueHealthColor');
         const soundToggle = document.getElementById('soundToggle');
+        const soundStatus = document.getElementById('soundStatus');
         
         // Background color controls
         const backgroundColorText = document.getElementById('backgroundColorText');
@@ -325,14 +314,20 @@
         const recordingIndicator = document.getElementById('recordingIndicator');
         const recordingStatus = document.getElementById('recordingStatus');
         
-        // Sound Elements
-        const redSound = document.getElementById('redSound');
-        const hitSound = document.getElementById('hitSound');
+        // Sound elements
+        const sounds = {
+            red: document.getElementById('redSound'),
+            hit: document.getElementById('hitSound')
+        };
         
         // Recording variables
         let mediaRecorder = null;
         let recordedChunks = [];
         let isRecording = false;
+        
+        // Sound settings
+        let soundEnabled = false;
+        const SOUND_COOLDOWN = 200; // milliseconds
         
         // Health bar elements
         const redHealthBar = document.getElementById('redHealthBar');
@@ -346,10 +341,6 @@
         let redHealthColor = "#e74c3c";
         let blueHealthColor = "#3498db";
         let canvasBackgroundColor = "#ffffff"; // Default white background
-        
-        // Sound settings
-        let soundEnabled = true;
-        const SOUND_COOLDOWN = 500; // 500ms cooldown between sounds
         
         // Health tracking
         let redSquareHealth = 4;
@@ -389,10 +380,18 @@
         const POWER_UP_SIZE = 60;
         
         // Sound function
-        function playCollisionSound(isDamaging) {
+        function playSquareSound(square) {
             if (!soundEnabled) return;
             
-            const soundElement = isDamaging ? hitSound : redSound;
+            // Check cooldown to prevent sound spamming
+            const now = Date.now();
+            if (now - square.lastPlayTime < SOUND_COOLDOWN) return;
+            
+            // Update last play time
+            square.lastPlayTime = now;
+            
+            // Get the sound element and play it
+            const soundElement = sounds[square.sound];
             if (soundElement) {
                 // Reset the sound to start from beginning
                 soundElement.currentTime = 0;
@@ -402,11 +401,11 @@
             }
         }
         
-        // Sound toggle event listener
+        // Sound toggle function
         soundToggle.addEventListener('click', function() {
             soundEnabled = !soundEnabled;
-            this.textContent = soundEnabled ? 'Sound: ON' : 'Sound: OFF';
-            this.className = soundEnabled ? 'sound-toggle' : 'sound-toggle disabled';
+            soundToggle.textContent = soundEnabled ? 'Disable Sound' : 'Enable Sound';
+            soundStatus.textContent = soundEnabled ? 'Enabled' : 'Disabled';
         });
         
         // Background color control functions
@@ -579,7 +578,8 @@
                 thornExpiryTime: 0,
                 originalSize: DEFAULT_SQUARE_SIZE,
                 isBlue,
-                lastCollisionTime: 0 // For sound cooldown
+                sound: 'red',
+                lastPlayTime: 0
             };
         }
         
@@ -675,22 +675,6 @@
 
         // Function to handle collision between two squares with reflective physics
         function handleCollision(square1, square2) {
-            // Check if enough time has passed since last collision for sound cooldown
-            const currentTime = Date.now();
-            const canPlaySound = (currentTime - square1.lastCollisionTime > SOUND_COOLDOWN) &&
-                               (currentTime - square2.lastCollisionTime > SOUND_COOLDOWN);
-            
-            // Determine if this collision will cause damage
-            const isDamaging = (square1.hasThorns && !square2.hasThorns) || 
-                             (square2.hasThorns && !square1.hasThorns);
-            
-            // Play appropriate sound
-            if (canPlaySound) {
-                playCollisionSound(isDamaging);
-                square1.lastCollisionTime = currentTime;
-                square2.lastCollisionTime = currentTime;
-            }
-            
             const side1 = getCollisionSide(square1, square2);
             const side2 = getCollisionSide(square2, square1);
             
@@ -758,12 +742,30 @@
                 }
             }
             
+            // Check if damage was caused
+            let damageDealt = false;
+            
             if (square1.hasThorns && !square2.hasThorns) {
                 square2.size = Math.max(30, square2.size - 30);
                 squares.forEach(sq => sq.hasThorns = false);
+                damageDealt = true;
             } else if (square2.hasThorns && !square1.hasThorns) {
                 square1.size = Math.max(30, square1.size - 30);
                 squares.forEach(sq => sq.hasThorns = false);
+                damageDealt = true;
+            }
+            
+            // Play appropriate sound
+            if (damageDealt) {
+                // Play hit sound when damage is dealt
+                square1.sound = 'hit';
+                square2.sound = 'hit';
+                playSquareSound(square1);
+            } else {
+                // Play red sound when no damage is dealt
+                square1.sound = 'red';
+                square2.sound = 'red';
+                playSquareSound(square1);
             }
         }
         
