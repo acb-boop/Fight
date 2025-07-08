@@ -416,8 +416,7 @@
                 this.options = {
                     color: options.color || '#4ECDC4',
                     particleCount: options.particleCount || 25,
-                    autoFade: options.autoFade !== false,
-                    fadeOpacity: options.fadeOpacity || 0.1,
+                    autoFade: false, // Disabled to prevent grey background
                     ...options
                 };
                 
@@ -445,11 +444,7 @@
             }
             
             draw() {
-                if (this.options.autoFade) {
-                    this.ctx.fillStyle = `rgba(10, 10, 10, ${this.options.fadeOpacity})`;
-                    this.ctx.fillRect(0, 0, this.width, this.height);
-                }
-                
+                // Draw particles without any background overlay
                 this.particles.forEach(particle => particle.draw(this.ctx));
             }
             
@@ -469,8 +464,14 @@
         }
 
         // Create particle systems for each square
-        const redParticles = new ParticleSystem(canvas, { color: redHealthColor, particleCount: 30 });
-        const blueParticles = new ParticleSystem(canvas, { color: blueHealthColor, particleCount: 30 });
+        const redParticles = new ParticleSystem(canvas, { 
+            color: redHealthColor, 
+            particleCount: 30
+        });
+        const blueParticles = new ParticleSystem(canvas, { 
+            color: blueHealthColor, 
+            particleCount: 30
+        });
         
         // Background color control functions
         function applyBackgroundColor(color) {
