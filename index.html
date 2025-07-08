@@ -186,11 +186,12 @@
             text-align: center;
             margin-top: 5px;
         }
-        .sound-controls {
+        .particle-controls {
             display: flex;
-            align-items: center;
-            gap: 10px;
+            gap: 15px;
             margin-top: 10px;
+            justify-content: center;
+            align-items: center;
             padding: 10px;
             background-color: #f9f9f9;
             border-radius: 8px;
@@ -238,19 +239,20 @@
             </div>
         </div>
         
-        <!-- Sound Controls -->
-        <div class="sound-controls">
-            <label for="soundToggle">Sound Effects:</label>
-            <button id="soundToggle">Enable Sound</button>
-            <span id="soundStatus">Disabled</span>
-        </div>
-        
         <!-- Background Color Control -->
         <div class="background-color-control">
             <label for="backgroundColorText">Canvas Background Color:</label>
             <input type="text" id="backgroundColorText" class="color-input" value="#ffffff" placeholder="#RRGGBB">
             <input type="color" id="backgroundColorPicker" class="color-picker-input" value="#ffffff">
             <button id="applyBackgroundBtn">Apply</button>
+        </div>
+        
+        <!-- Particle Controls -->
+        <div class="particle-controls">
+            <label for="particleCount">Particles per explosion:</label>
+            <input type="range" id="particleCount" min="10" max="50" value="25">
+            <span id="particleCountValue">25</span>
+            <button id="clearParticlesBtn">Clear Particles</button>
         </div>
         
         <div class="controls">
@@ -278,18 +280,128 @@
         </div>
     </div>
 
-    <!-- Audio Elements -->
-    <audio id="redSound" preload="auto">
-        <source src="red.wav" type="audio/wav">
-    </audio>
-    <audio id="hitSound" preload="auto">
-        <source src="hit.wav" type="audio/wav">
-    </audio>
-
     <script>
+        // Particle System Classes
+        class Particle {
+            constructor(x, y, color = '#4ECDC4') {
+                this.x = x;
+                this.y = y;
+                this.size = Math.random() * 6 + 2;
+                this.speedX = (Math.random() - 0.5) * 8;
+                this.speedY = (Math.random() - 0.5) * 8;
+                this.life = 1;
+                this.decay = Math.random() * 0.02 + 0.01;
+                this.gravity = 0.1;
+                this.bounce = 0.7;
+                this.color = color;
+            }
+            
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                this.speedY += this.gravity;
+                this.life -= this.decay;
+                this.size *= 0.995;
+                
+                // Bounce off bottom
+                if (this.y + this.size > this.canvasHeight) {
+                    this.y = this.canvasHeight - this.size;
+                    this.speedY *= -this.bounce;
+                    this.speedX *= 0.9;
+                }
+                
+                // Bounce off sides
+                if (this.x + this.size > this.canvasWidth || this.x - this.size < 0) {
+                    this.speedX *= -this.bounce;
+                }
+                
+                return this.life > 0 && this.size > 0.1;
+            }
+            
+            draw(ctx) {
+                ctx.save();
+                ctx.globalAlpha = this.life;
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+            
+            setBounds(width, height) {
+                this.canvasWidth = width;
+                this.canvasHeight = height;
+            }
+        }
+
+        class ParticleSystem {
+            constructor(canvas, options = {}) {
+                this.canvas = canvas;
+                this.ctx = canvas.getContext('2d');
+                this.particles = [];
+                
+                // Configurable options
+                this.options = {
+                    color: options.color || '#4ECDC4',
+                    particleCount: options.particleCount || 25,
+                    autoFade: options.autoFade !== false,
+                    fadeOpacity: options.fadeOpacity || 0.1,
+                    ...options
+                };
+                
+                this.updateBounds();
+            }
+            
+            updateBounds() {
+                this.width = this.canvas.width;
+                this.height = this.canvas.height;
+            }
+            
+            createExplosion(x, y, count = this.options.particleCount, color = this.options.color) {
+                for (let i = 0; i < count; i++) {
+                    const particle = new Particle(x, y, color);
+                    particle.setBounds(this.width, this.height);
+                    this.particles.push(particle);
+                }
+            }
+            
+            update() {
+                this.particles = this.particles.filter(particle => {
+                    particle.setBounds(this.width, this.height);
+                    return particle.update();
+                });
+            }
+            
+            draw() {
+                this.particles.forEach(particle => particle.draw(this.ctx));
+            }
+            
+            animate() {
+                this.updateBounds();
+                this.update();
+                this.draw();
+            }
+            
+            clear() {
+                this.particles = [];
+            }
+            
+            getParticleCount() {
+                return this.particles.length;
+            }
+        }
+
         // Get the canvas and its context
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
+        
+        // Initialize particle system
+        const particleSystem = new ParticleSystem(canvas, {
+            particleCount: 25,
+            autoFade: false // We'll handle background clearing manually
+        });
         
         // Buttons
         const resetBtn = document.getElementById('resetBtn');
@@ -299,8 +411,9 @@
         const blueThornColorInput = document.getElementById('blueThornColor');
         const redHealthColorInput = document.getElementById('redHealthColor');
         const blueHealthColorInput = document.getElementById('blueHealthColor');
-        const soundToggle = document.getElementById('soundToggle');
-        const soundStatus = document.getElementById('soundStatus');
+        const particleCountSlider = document.getElementById('particleCount');
+        const particleCountValue = document.getElementById('particleCountValue');
+        const clearParticlesBtn = document.getElementById('clearParticlesBtn');
         
         // Background color controls
         const backgroundColorText = document.getElementById('backgroundColorText');
@@ -314,20 +427,10 @@
         const recordingIndicator = document.getElementById('recordingIndicator');
         const recordingStatus = document.getElementById('recordingStatus');
         
-        // Sound elements
-        const sounds = {
-            red: document.getElementById('redSound'),
-            hit: document.getElementById('hitSound')
-        };
-        
         // Recording variables
         let mediaRecorder = null;
         let recordedChunks = [];
         let isRecording = false;
-        
-        // Sound settings
-        let soundEnabled = false;
-        const SOUND_COOLDOWN = 200; // milliseconds
         
         // Health bar elements
         const redHealthBar = document.getElementById('redHealthBar');
@@ -340,11 +443,14 @@
         let blueThornColor = "#BEBEBE";
         let redHealthColor = "#e74c3c";
         let blueHealthColor = "#3498db";
-        let canvasBackgroundColor = "#ffffff"; // Default white background
+        let canvasBackgroundColor = "#ffffff";
+        let particleCount = 25;
         
         // Health tracking
         let redSquareHealth = 4;
         let blueSquareHealth = 4;
+        let previousRedHealth = 4;
+        let previousBlueHealth = 4;
         
         // Default square properties
         const DEFAULT_SQUARE_SIZE = 120;
@@ -379,33 +485,14 @@
         const THORN_DURATION = 7000;
         const POWER_UP_SIZE = 60;
         
-        // Sound function
-        function playSquareSound(square) {
-            if (!soundEnabled) return;
-            
-            // Check cooldown to prevent sound spamming
-            const now = Date.now();
-            if (now - square.lastPlayTime < SOUND_COOLDOWN) return;
-            
-            // Update last play time
-            square.lastPlayTime = now;
-            
-            // Get the sound element and play it
-            const soundElement = sounds[square.sound];
-            if (soundElement) {
-                // Reset the sound to start from beginning
-                soundElement.currentTime = 0;
-                soundElement.play().catch(error => {
-                    console.log("Sound play error:", error);
-                });
-            }
-        }
+        // Particle controls event listeners
+        particleCountSlider.addEventListener('input', function() {
+            particleCount = parseInt(this.value);
+            particleCountValue.textContent = particleCount;
+        });
         
-        // Sound toggle function
-        soundToggle.addEventListener('click', function() {
-            soundEnabled = !soundEnabled;
-            soundToggle.textContent = soundEnabled ? 'Disable Sound' : 'Enable Sound';
-            soundStatus.textContent = soundEnabled ? 'Enabled' : 'Disabled';
+        clearParticlesBtn.addEventListener('click', function() {
+            particleSystem.clear();
         });
         
         // Background color control functions
@@ -577,9 +664,7 @@
                 hasThorns: false,
                 thornExpiryTime: 0,
                 originalSize: DEFAULT_SQUARE_SIZE,
-                isBlue,
-                sound: 'red',
-                lastPlayTime: 0
+                isBlue
             };
         }
         
@@ -742,30 +827,24 @@
                 }
             }
             
-            // Check if damage was caused
-            let damageDealt = false;
+            let damageOccurred = false;
             
             if (square1.hasThorns && !square2.hasThorns) {
+                const oldSize = square2.size;
                 square2.size = Math.max(30, square2.size - 30);
+                if (square2.size < oldSize) {
+                    damageOccurred = true;
+                    // Create particle explosion at damaged square's center
+                    const explosionX = square2.x + square2.size / 2;
+                    const explosionY = square2.y + square2.size / 2;
+                    const explosionColor = square2.isBlue ? blueHealthColor : redHealthColor;
+                    particleSystem.createExplosion(explosionX, explosionY, particleCount, explosionColor);
+                }
                 squares.forEach(sq => sq.hasThorns = false);
-                damageDealt = true;
             } else if (square2.hasThorns && !square1.hasThorns) {
+                const oldSize = square1.size;
                 square1.size = Math.max(30, square1.size - 30);
                 squares.forEach(sq => sq.hasThorns = false);
-                damageDealt = true;
-            }
-            
-            // Play appropriate sound
-            if (damageDealt) {
-                // Play hit sound when damage is dealt
-                square1.sound = 'hit';
-                square2.sound = 'hit';
-                playSquareSound(square1);
-            } else {
-                // Play red sound when no damage is dealt
-                square1.sound = 'red';
-                square2.sound = 'red';
-                playSquareSound(square1);
             }
         }
         
