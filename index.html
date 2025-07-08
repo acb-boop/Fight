@@ -186,17 +186,6 @@
             text-align: center;
             margin-top: 5px;
         }
-        .particle-controls {
-            display: flex;
-            gap: 15px;
-            margin-top: 10px;
-            justify-content: center;
-            align-items: center;
-            padding: 10px;
-            background-color: #f9f9f9;
-            border-radius: 8px;
-            border: 1px solid #ddd;
-        }
     </style>
 </head>
 <body>
@@ -247,14 +236,6 @@
             <button id="applyBackgroundBtn">Apply</button>
         </div>
         
-        <!-- Particle Controls -->
-        <div class="particle-controls">
-            <label for="particleCount">Particles per explosion:</label>
-            <input type="range" id="particleCount" min="10" max="50" value="25">
-            <span id="particleCountValue">25</span>
-            <button id="clearParticlesBtn">Clear Particles</button>
-        </div>
-        
         <div class="controls">
             <button id="resetBtn">Reset</button>
             <button id="pauseBtn">Pause</button>
@@ -281,127 +262,9 @@
     </div>
 
     <script>
-        // Particle System Classes
-        class Particle {
-            constructor(x, y, color = '#4ECDC4') {
-                this.x = x;
-                this.y = y;
-                this.size = Math.random() * 6 + 2;
-                this.speedX = (Math.random() - 0.5) * 8;
-                this.speedY = (Math.random() - 0.5) * 8;
-                this.life = 1;
-                this.decay = Math.random() * 0.02 + 0.01;
-                this.gravity = 0.1;
-                this.bounce = 0.7;
-                this.color = color;
-            }
-            
-            update() {
-                this.x += this.speedX;
-                this.y += this.speedY;
-                this.speedY += this.gravity;
-                this.life -= this.decay;
-                this.size *= 0.995;
-                
-                // Bounce off bottom
-                if (this.y + this.size > this.canvasHeight) {
-                    this.y = this.canvasHeight - this.size;
-                    this.speedY *= -this.bounce;
-                    this.speedX *= 0.9;
-                }
-                
-                // Bounce off sides
-                if (this.x + this.size > this.canvasWidth || this.x - this.size < 0) {
-                    this.speedX *= -this.bounce;
-                }
-                
-                return this.life > 0 && this.size > 0.1;
-            }
-            
-            draw(ctx) {
-                ctx.save();
-                ctx.globalAlpha = this.life;
-                ctx.fillStyle = this.color;
-                ctx.shadowBlur = 10;
-                ctx.shadowColor = this.color;
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.restore();
-            }
-            
-            setBounds(width, height) {
-                this.canvasWidth = width;
-                this.canvasHeight = height;
-            }
-        }
-
-        class ParticleSystem {
-            constructor(canvas, options = {}) {
-                this.canvas = canvas;
-                this.ctx = canvas.getContext('2d');
-                this.particles = [];
-                
-                // Configurable options
-                this.options = {
-                    color: options.color || '#4ECDC4',
-                    particleCount: options.particleCount || 25,
-                    autoFade: options.autoFade !== false,
-                    fadeOpacity: options.fadeOpacity || 0.1,
-                    ...options
-                };
-                
-                this.updateBounds();
-            }
-            
-            updateBounds() {
-                this.width = this.canvas.width;
-                this.height = this.canvas.height;
-            }
-            
-            createExplosion(x, y, count = this.options.particleCount, color = this.options.color) {
-                for (let i = 0; i < count; i++) {
-                    const particle = new Particle(x, y, color);
-                    particle.setBounds(this.width, this.height);
-                    this.particles.push(particle);
-                }
-            }
-            
-            update() {
-                this.particles = this.particles.filter(particle => {
-                    particle.setBounds(this.width, this.height);
-                    return particle.update();
-                });
-            }
-            
-            draw() {
-                this.particles.forEach(particle => particle.draw(this.ctx));
-            }
-            
-            animate() {
-                this.updateBounds();
-                this.update();
-                this.draw();
-            }
-            
-            clear() {
-                this.particles = [];
-            }
-            
-            getParticleCount() {
-                return this.particles.length;
-            }
-        }
-
         // Get the canvas and its context
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-        
-        // Initialize particle system
-        const particleSystem = new ParticleSystem(canvas, {
-            particleCount: 25,
-            autoFade: false // We'll handle background clearing manually
-        });
         
         // Buttons
         const resetBtn = document.getElementById('resetBtn');
@@ -411,9 +274,6 @@
         const blueThornColorInput = document.getElementById('blueThornColor');
         const redHealthColorInput = document.getElementById('redHealthColor');
         const blueHealthColorInput = document.getElementById('blueHealthColor');
-        const particleCountSlider = document.getElementById('particleCount');
-        const particleCountValue = document.getElementById('particleCountValue');
-        const clearParticlesBtn = document.getElementById('clearParticlesBtn');
         
         // Background color controls
         const backgroundColorText = document.getElementById('backgroundColorText');
@@ -443,14 +303,11 @@
         let blueThornColor = "#BEBEBE";
         let redHealthColor = "#e74c3c";
         let blueHealthColor = "#3498db";
-        let canvasBackgroundColor = "#ffffff";
-        let particleCount = 25;
+        let canvasBackgroundColor = "#ffffff"; // Default white background
         
         // Health tracking
         let redSquareHealth = 4;
         let blueSquareHealth = 4;
-        let previousRedHealth = 4;
-        let previousBlueHealth = 4;
         
         // Default square properties
         const DEFAULT_SQUARE_SIZE = 120;
@@ -484,16 +341,6 @@
         const HEAL_SPAWN_INTERVAL = 15000;
         const THORN_DURATION = 7000;
         const POWER_UP_SIZE = 60;
-        
-        // Particle controls event listeners
-        particleCountSlider.addEventListener('input', function() {
-            particleCount = parseInt(this.value);
-            particleCountValue.textContent = particleCount;
-        });
-        
-        clearParticlesBtn.addEventListener('click', function() {
-            particleSystem.clear();
-        });
         
         // Background color control functions
         function applyBackgroundColor(color) {
@@ -827,22 +674,10 @@
                 }
             }
             
-            let damageOccurred = false;
-            
             if (square1.hasThorns && !square2.hasThorns) {
-                const oldSize = square2.size;
                 square2.size = Math.max(30, square2.size - 30);
-                if (square2.size < oldSize) {
-                    damageOccurred = true;
-                    // Create particle explosion at damaged square's center
-                    const explosionX = square2.x + square2.size / 2;
-                    const explosionY = square2.y + square2.size / 2;
-                    const explosionColor = square2.isBlue ? blueHealthColor : redHealthColor;
-                    particleSystem.createExplosion(explosionX, explosionY, particleCount, explosionColor);
-                }
                 squares.forEach(sq => sq.hasThorns = false);
             } else if (square2.hasThorns && !square1.hasThorns) {
-                const oldSize = square1.size;
                 square1.size = Math.max(30, square1.size - 30);
                 squares.forEach(sq => sq.hasThorns = false);
             }
@@ -1090,4 +925,4 @@
         updateHealthBar(blueHealthBar, blueSquareHealth, 4, blueHealthColor);
     </script>
 </body>
-    </html>
+</html>
