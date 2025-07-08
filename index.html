@@ -134,6 +134,12 @@
         .download-btn:hover {
             background-color: #2980b9;
         }
+        .restore-btn {
+            background-color: #9b59b6;
+        }
+        .restore-btn:hover {
+            background-color: #8e44ad;
+        }
         .color-picker {
             display: flex;
             align-items: center;
@@ -234,6 +240,7 @@
             <input type="text" id="backgroundColorText" class="color-input" value="#ffffff" placeholder="#RRGGBB">
             <input type="color" id="backgroundColorPicker" class="color-picker-input" value="#ffffff">
             <button id="applyBackgroundBtn">Apply</button>
+            <button id="restoreBackgroundBtn" class="restore-btn">Restore Previous</button>
         </div>
         
         <div class="controls">
@@ -279,6 +286,7 @@
         const backgroundColorText = document.getElementById('backgroundColorText');
         const backgroundColorPicker = document.getElementById('backgroundColorPicker');
         const applyBackgroundBtn = document.getElementById('applyBackgroundBtn');
+        const restoreBackgroundBtn = document.getElementById('restoreBackgroundBtn');
         
         // Screen Recorder Elements
         const startRecordBtn = document.getElementById('startRecordBtn');
@@ -304,6 +312,7 @@
         let redHealthColor = "#e74c3c";
         let blueHealthColor = "#3498db";
         let canvasBackgroundColor = "#ffffff"; // Default white background
+        let oldBackgroundColor = canvasBackgroundColor; // Store the original background color
         
         // Health tracking
         let redSquareHealth = 4;
@@ -466,6 +475,7 @@
         // Background color control functions
         function applyBackgroundColor(color) {
             if (isValidHexColor(color)) {
+                oldBackgroundColor = canvasBackgroundColor; // Store current color before changing
                 canvasBackgroundColor = color;
                 canvas.style.backgroundColor = color;
                 backgroundColorText.value = color;
@@ -487,6 +497,11 @@
             if (e.key === 'Enter') {
                 applyBackgroundColor(this.value);
             }
+        });
+        
+        // Restore background color button
+        restoreBackgroundBtn.addEventListener('click', function() {
+            applyBackgroundColor(oldBackgroundColor);
         });
         
         // Screen Recording Functions
