@@ -287,6 +287,13 @@
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         
+        // Create a wrapper div for recording
+        const canvasWrapper = document.getElementById('canvas-wrapper');
+        const recordingCanvas = document.createElement('canvas');
+        recordingCanvas.width = 1080;
+        recordingCanvas.height = 760; // Increased height to include health bars
+        const recordingCtx = recordingCanvas.getContext('2d');
+        
         // Buttons
         const resetBtn = document.getElementById('resetBtn');
         const pauseBtn = document.getElementById('pauseBtn');
@@ -411,14 +418,14 @@
             toggleSoundBtn.textContent = soundEnabled ? 'Sound: ON' : 'Sound: OFF';
         });
         
-        // Particle System
+        // Particle System with larger particles
         class Particle {
             constructor(x, y, color = '#4ECDC4') {
                 this.x = x;
                 this.y = y;
-                this.size = Math.random() * 6 + 2;
-                this.speedX = (Math.random() - 0.5) * 8;
-                this.speedY = (Math.random() - 0.5) * 8;
+                this.size = Math.random() * 12 + 4; // Larger particles
+                this.speedX = (Math.random() - 0.5) * 10;
+                this.speedY = (Math.random() - 0.5) * 10;
                 this.life = 1;
                 this.decay = Math.random() * 0.02 + 0.01;
                 this.gravity = 0.1;
@@ -452,7 +459,7 @@
                 ctx.save();
                 ctx.globalAlpha = this.life;
                 ctx.fillStyle = this.color;
-                ctx.shadowBlur = 10;
+                ctx.shadowBlur = 15; // Larger shadow
                 ctx.shadowColor = this.color;
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
@@ -475,8 +482,8 @@
                 // Configurable options
                 this.options = {
                     color: options.color || '#4ECDC4',
-                    particleCount: options.particleCount || 25,
-                    autoFade: false, // Disabled to prevent grey background
+                    particleCount: options.particleCount || 30, // More particles
+                    autoFade: false,
                     ...options
                 };
                 
@@ -489,8 +496,18 @@
             }
             
             createExplosion(x, y, count = this.options.particleCount) {
+                // Create colorful particles
+                const colors = [
+                    this.options.color,
+                    '#FFFFFF',
+                    '#FFD700',
+                    '#FF69B4',
+                    '#00FFFF'
+                ];
+                
                 for (let i = 0; i < count; i++) {
-                    const particle = new Particle(x, y, this.options.color);
+                    const color = colors[Math.floor(Math.random() * colors.length)];
+                    const particle = new Particle(x, y, color);
                     particle.setBounds(this.width, this.height);
                     this.particles.push(particle);
                 }
@@ -504,7 +521,6 @@
             }
             
             draw() {
-                // Draw particles without any background overlay
                 this.particles.forEach(particle => particle.draw(this.ctx));
             }
             
@@ -526,11 +542,11 @@
         // Create particle systems for each square
         const redParticles = new ParticleSystem(canvas, { 
             color: redHealthColor, 
-            particleCount: 30
+            particleCount: 40
         });
         const blueParticles = new ParticleSystem(canvas, { 
             color: blueHealthColor, 
-            particleCount: 30
+            particleCount: 40
         });
         
         // Background color control functions
@@ -570,8 +586,8 @@
             try {
                 recordedChunks = [];
                 
-                // Create a stream from the canvas
-                const stream = canvas.captureStream(120); // 120 FPS
+                // Create a stream from the recording canvas
+                const stream = recordingCanvas.captureStream(120); // 120 FPS
                 
                 // Set up MediaRecorder with high quality settings
                 const options = {
@@ -709,7 +725,8 @@
                 thornExpiryTime: 0,
                 originalSize: DEFAULT_SQUARE_SIZE,
                 isBlue,
-                lastPlayTime: 0 // For sound cooldown
+                lastPlayTime: 0, // For sound cooldown
+                isActive: true // To track if square is still in game
             };
         }
         
@@ -886,12 +903,22 @@
                 damageDealt = true;
                 damagedSquare = square2;
                 playSound('hit');
+                
+                // Check if square is defeated
+                if (calculateHealth(square2.size) <= 1) {
+                    square2.isActive = false;
+                }
             } else if (square2.hasThorns && !square1.hasThorns) {
                 square1.size = Math.max(30, square1.size - 30);
                 squares.forEach(sq => sq.hasThorns = false);
                 damageDealt = true;
                 damagedSquare = square1;
                 playSound('hit');
+                
+                // Check if square is defeated
+                if (calculateHealth(square1.size) <= 1) {
+                    square1.isActive = false;
+                }
             }
             
             // Create particle effect if damage was dealt
@@ -974,6 +1001,7 @@
                 let powerUpCollected = false;
                 for (let j = 0; j < squares.length; j++) {
                     const square = squares[j];
+                    if (!square.isActive) continue;
                     
                     if (checkPowerUpCollision(square, powerUp)) {
                         if (powerUp.type === 'knife') {
@@ -1004,6 +1032,7 @@
             // Update and draw squares
             for (let i = 0; i < squares.length; i++) {
                 const square = squares[i];
+                if (!square.isActive) continue;
                 
                 // Check if thorns effect has expired
                 if (square.hasThorns && currentTime > square.thornExpiryTime) {
@@ -1066,21 +1095,50 @@
             }
             
             // Update health based on square sizes
-            redSquareHealth = calculateHealth(squares[1].size); // Red square is index 1
-            blueSquareHealth = calculateHealth(squares[0].size); // Blue square is index 0
+            redSquareHealth = calculateHealth(squares[1].isActive ? squares[1].size : 0);
+            blueSquareHealth = calculateHealth(squares[0].isActive ? squares[0].size : 0);
             
             // Update health bar displays
             updateHealthBar(redHealthBar, redSquareHealth, 6, redHealthColor);
             updateHealthBar(blueHealthBar, blueSquareHealth, 6, blueHealthColor);
             
             // Check collision between squares
-            if (checkCollision(squares[0], squares[1])) {
+            if (squares[0].isActive && squares[1].isActive && checkCollision(squares[0], squares[1])) {
                 handleCollision(squares[0], squares[1]);
             }
             
             // Update and draw particles
             redParticles.animate();
             blueParticles.animate();
+            
+            // For recording - draw everything to the recording canvas
+            if (isRecording) {
+                recordingCtx.fillStyle = canvasBackgroundColor;
+                recordingCtx.fillRect(0, 0, recordingCanvas.width, recordingCanvas.height);
+                
+                // Draw health bars at the top
+                recordingCtx.fillStyle = '#e8e8e8';
+                recordingCtx.fillRect(0, 0, recordingCanvas.width, 50);
+                
+                // Draw red health bar
+                recordingCtx.fillStyle = '#ddd';
+                recordingCtx.fillRect(20, 15, 180, 20);
+                recordingCtx.fillStyle = redHealthColor;
+                recordingCtx.fillRect(20, 15, 180 * (redSquareHealth / 4), 20);
+                recordingCtx.strokeStyle = '#333';
+                recordingCtx.strokeRect(20, 15, 180, 20);
+                
+                // Draw blue health bar
+                recordingCtx.fillStyle = '#ddd';
+                recordingCtx.fillRect(recordingCanvas.width - 200, 15, 180, 20);
+                recordingCtx.fillStyle = blueHealthColor;
+                recordingCtx.fillRect(recordingCanvas.width - 200, 15, 180 * (blueSquareHealth / 4), 20);
+                recordingCtx.strokeStyle = '#333';
+                recordingCtx.strokeRect(recordingCanvas.width - 200, 15, 180, 20);
+                
+                // Draw the game canvas below the health bars
+                recordingCtx.drawImage(canvas, 0, 50);
+            }
         }
 
         // Animation loop
