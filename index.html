@@ -304,6 +304,7 @@
         let redHealthColor = "#e74c3c";
         let blueHealthColor = "#3498db";
         let canvasBackgroundColor = "#ffffff"; // Default white background
+        let particleSystem = new ParticleSystem(canvas, { autoFade: false, particleCount: 20 });
         
         // Health tracking
         let redSquareHealth = 4;
@@ -448,6 +449,117 @@
                 recordingStatus.textContent = 'Processing...';
             }
         }
+
+        // Particle System Classes
+class Particle {
+    constructor(x, y, color = '#4ECDC4') {
+        this.x = x;
+        this.y = y;
+        this.size = Math.random() * 6 + 2;
+        this.speedX = (Math.random() - 0.5) * 8;
+        this.speedY = (Math.random() - 0.5) * 8;
+        this.life = 1;
+        this.decay = Math.random() * 0.02 + 0.01;
+        this.gravity = 0.1;
+        this.bounce = 0.7;
+        this.color = color;
+    }
+    
+    update() {
+        this.x += this.speedX;
+        this.y += this.speedY;
+        this.speedY += this.gravity;
+        this.life -= this.decay;
+        this.size *= 0.995;
+        
+        // Bounce off bottom
+        if (this.y + this.size > this.canvasHeight) {
+            this.y = this.canvasHeight - this.size;
+            this.speedY *= -this.bounce;
+            this.speedX *= 0.9;
+        }
+        
+        // Bounce off sides
+        if (this.x + this.size > this.canvasWidth || this.x - this.size < 0) {
+            this.speedX *= -this.bounce;
+        }
+        
+        return this.life > 0 && this.size > 0.1;
+    }
+    
+    draw(ctx) {
+        ctx.save();
+        ctx.globalAlpha = this.life;
+        ctx.fillStyle = this.color;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+    
+    setBounds(width, height) {
+        this.canvasWidth = width;
+        this.canvasHeight = height;
+    }
+}
+
+class ParticleSystem {
+    constructor(canvas, options = {}) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext('2d');
+        this.particles = [];
+        
+        this.options = {
+            color: options.color || '#4ECDC4',
+            particleCount: options.particleCount || 25,
+            autoFade: options.autoFade !== false,
+            fadeOpacity: options.fadeOpacity || 0.1,
+            ...options
+        };
+        
+        this.updateBounds();
+    }
+    
+    updateBounds() {
+        this.width = this.canvas.width;
+        this.height = this.canvas.height;
+    }
+    
+    createExplosion(x, y, count = this.options.particleCount) {
+        for (let i = 0; i < count; i++) {
+            const particle = new Particle(x, y, this.options.color);
+            particle.setBounds(this.width, this.height);
+            this.particles.push(particle);
+        }
+    }
+    
+    update() {
+        this.particles = this.particles.filter(particle => {
+            particle.setBounds(this.width, this.height);
+            return particle.update();
+        });
+    }
+    
+    draw() {
+        this.particles.forEach(particle => particle.draw(this.ctx));
+    }
+    
+    animate() {
+        this.updateBounds();
+        this.update();
+        this.draw();
+    }
+    
+    clear() {
+        this.particles = [];
+    }
+    
+    getParticleCount() {
+        return this.particles.length;
+    }
+}
         
         // Event listeners for recording controls
         startRecordBtn.addEventListener('click', startRecording);
@@ -607,81 +719,83 @@
 
         // Function to handle collision between two squares with reflective physics
         function handleCollision(square1, square2) {
-            const side1 = getCollisionSide(square1, square2);
-            const side2 = getCollisionSide(square2, square1);
-            
-            if (side1 === "left" || side1 === "right") {
-                square1.vx *= -1;
-                
-                if (square1.vy > 0) {
-                    square1.direction = square1.vx > 0 ? 0 : 1;
-                } else {
-                    square1.direction = square1.vx > 0 ? 3 : 2;
-                }
-            } else {
-                square1.vy *= -1;
-                
-                if (square1.vx > 0) {
-                    square1.direction = square1.vy > 0 ? 0 : 3;
-                } else {
-                    square1.direction = square1.vy > 0 ? 1 : 2;
-                }
-            }
-            
-            if (side2 === "left" || side2 === "right") {
-                square2.vx *= -1;
-                
-                if (square2.vy > 0) {
-                    square2.direction = square2.vx > 0 ? 0 : 1;
-                } else {
-                    square2.direction = square2.vx > 0 ? 3 : 2;
-                }
-            } else {
-                square2.vy *= -1;
-                
-                if (square2.vx > 0) {
-                    square2.direction = square2.vy > 0 ? 0 : 3;
-                } else {
-                    square2.direction = square2.vy > 0 ? 1 : 2;
-                }
-            }
-            
-            const center1 = { x: square1.x + square1.size / 2, y: square1.y + square1.size / 2 };
-            const center2 = { x: square2.x + square2.size / 2, y: square2.y + square2.size / 2 };
-            
-            const dx = center2.x - center1.x;
-            const dy = center2.y - center1.y;
-            
-            const overlapX = (square1.size + square2.size) / 2 - Math.abs(dx);
-            if (Math.abs(dx) > 0) {
-                if (dx > 0) {
-                    square1.x -= overlapX / 4;
-                    square2.x += overlapX / 4;
-                } else {
-                    square1.x += overlapX / 4;
-                    square2.x -= overlapX / 4;
-                }
-            }
-            
-            const overlapY = (square1.size + square2.size) / 2 - Math.abs(dy);
-            if (Math.abs(dy) > 0) {
-                if (dy > 0) {
-                    square1.y -= overlapY / 4;
-                    square2.y += overlapY / 4;
-                } else {
-                    square1.y += overlapY / 4;
-                    square2.y -= overlapY / 4;
-                }
-            }
-            
-            if (square1.hasThorns && !square2.hasThorns) {
-                square2.size = Math.max(30, square2.size - 30);
-                squares.forEach(sq => sq.hasThorns = false);
-            } else if (square2.hasThorns && !square1.hasThorns) {
-                square1.size = Math.max(30, square1.size - 30);
-                squares.forEach(sq => sq.hasThorns = false);
-            }
+    const side1 = getCollisionSide(square1, square2);
+    const side2 = getCollisionSide(square2, square1);
+    
+    if (side1 === "left" || side1 === "right") {
+        square1.vx *= -1;
+        if (square1.vy > 0) {
+            square1.direction = square1.vx > 0 ? 0 : 1;
+        } else {
+            square1.direction = square1.vx > 0 ? 3 : 2;
         }
+    } else {
+        square1.vy *= -1;
+        if (square1.vx > 0) {
+            square1.direction = square1.vy > 0 ? 0 : 3;
+        } else {
+            square1.direction = square1.vy > 0 ? 1 : 2;
+        }
+    }
+    
+    if (side2 === "left" || side2 === "right") {
+        square2.vx *= -1;
+        if (square2.vy > 0) {
+            square2.direction = square2.vx > 0 ? 0 : 1;
+        } else {
+            square2.direction = square2.vx > 0 ? 3 : 2;
+        }
+    } else {
+        square2.vy *= -1;
+        if (square2.vx > 0) {
+            square2.direction = square2.vy > 0 ? 0 : 3;
+        } else {
+            square2.direction = square2.vy > 0 ? 1 : 2;
+        }
+    }
+    
+    const center1 = { x: square1.x + square1.size / 2, y: square1.y + square1.size / 2 };
+    const center2 = { x: square2.x + square2.size / 2, y: square2.y + square2.size / 2 };
+    
+    const dx = center2.x - center1.x;
+    const dy = center2.y - center1.y;
+    
+    const overlapX = (square1.size + square2.size) / 2 - Math.abs(dx);
+    if (Math.abs(dx) > 0) {
+        if (dx > 0) {
+            square1.x -= overlapX / 4;
+            square2.x += overlapX / 4;
+        } else {
+            square1.x += overlapX / 4;
+            square2.x -= overlapX / 4;
+        }
+    }
+    
+    const overlapY = (square1.size + square2.size) / 2 - Math.abs(dy);
+    if (Math.abs(dy) > 0) {
+        if (dy > 0) {
+            square1.y -= overlapY / 4;
+            square2.y += overlapY / 4;
+        } else {
+            square1.y += overlapY / 4;
+            square2.y -= overlapY / 4;
+        }
+    }
+    
+    if (square1.hasThorns && !square2.hasThorns) {
+        square2.size = Math.max(30, square2.size - 30);
+        const particleColor = square2.isBlue ? blueHealthColor : redHealthColor;
+        particleSystem.options.color = particleColor;
+        particleSystem.createExplosion(square2.x + square2.size / 2, square2.y + square2.size / 2, 15);
+        squares.forEach(sq => sq.hasThorns = false);
+    } else if (square2.hasThorns && !square1.hasThorns) {
+        square1.size = Math.max(30, square1.size - 30);
+        const particleColor = square1.isBlue ? blueHealthColor : redHealthColor;
+        particleSystem.options.color = particleColor;
+        particleSystem.createExplosion(square1.x + square1.size / 2, square1.y + square1.size / 2, 15);
+        squares.forEach(sq => sq.hasThorns = false);
+    }
+}
         
         // Function to draw thorns around a square
         function drawThorns(square) {
@@ -831,6 +945,7 @@
                 if (square.hasThorns) {
                     drawThorns(square);
                 }
+                particleSystem.animate();
             }
             
             // Update health based on square sizes
@@ -878,6 +993,7 @@
             
             // Spawn knife immediately on reset
             spawnKnifePowerUp();
+            particleSystem.clear();
         });
 
         pauseBtn.addEventListener('click', function() {
