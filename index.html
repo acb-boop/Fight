@@ -140,6 +140,12 @@
         .restore-btn:hover {
             background-color: #8e44ad;
         }
+        .sound-btn {
+            background-color: #f39c12;
+        }
+        .sound-btn:hover {
+            background-color: #e67e22;
+        }
         .color-picker {
             display: flex;
             align-items: center;
@@ -241,6 +247,7 @@
             <input type="color" id="backgroundColorPicker" class="color-picker-input" value="#ffffff">
             <button id="applyBackgroundBtn">Apply</button>
             <button id="restoreBackgroundBtn" class="restore-btn">Restore Previous</button>
+            <button id="toggleSoundBtn" class="sound-btn">Sound: ON</button>
         </div>
         
         <div class="controls">
@@ -268,6 +275,13 @@
         </div>
     </div>
 
+    <!-- Audio elements -->
+    <audio id="redSound" src="red.wav" preload="auto"></audio>
+    <audio id="blueSound" src="blue.wav" preload="auto"></audio>
+    <audio id="hitSound" src="hit.wav" preload="auto"></audio>
+    <audio id="knifeSound" src="knife.wav" preload="auto"></audio>
+    <audio id="healSound" src="heal.wav" preload="auto"></audio>
+
     <script>
         // Get the canvas and its context
         const canvas = document.getElementById('canvas');
@@ -281,6 +295,7 @@
         const blueThornColorInput = document.getElementById('blueThornColor');
         const redHealthColorInput = document.getElementById('redHealthColor');
         const blueHealthColorInput = document.getElementById('blueHealthColor');
+        const toggleSoundBtn = document.getElementById('toggleSoundBtn');
         
         // Background color controls
         const backgroundColorText = document.getElementById('backgroundColorText');
@@ -294,6 +309,15 @@
         const downloadBtn = document.getElementById('downloadBtn');
         const recordingIndicator = document.getElementById('recordingIndicator');
         const recordingStatus = document.getElementById('recordingStatus');
+        
+        // Audio elements
+        const sounds = {
+            red: document.getElementById('redSound'),
+            blue: document.getElementById('blueSound'),
+            hit: document.getElementById('hitSound'),
+            knife: document.getElementById('knifeSound'),
+            heal: document.getElementById('healSound')
+        };
         
         // Recording variables
         let mediaRecorder = null;
@@ -313,6 +337,8 @@
         let blueHealthColor = "#3498db";
         let canvasBackgroundColor = "#ffffff"; // Default white background
         let oldBackgroundColor = canvasBackgroundColor; // Store the original background color
+        let soundEnabled = true;
+        const SOUND_COOLDOWN = 300; // 300ms cooldown between sounds
         
         // Health tracking
         let redSquareHealth = 4;
@@ -350,6 +376,40 @@
         const HEAL_SPAWN_INTERVAL = 15000;
         const THORN_DURATION = 7000;
         const POWER_UP_SIZE = 60;
+        
+        // Sound functions
+        function playSound(soundName) {
+            if (!soundEnabled) return;
+            
+            const sound = sounds[soundName];
+            if (sound) {
+                sound.currentTime = 0;
+                sound.play().catch(error => {
+                    console.log("Sound play error:", error);
+                });
+            }
+        }
+        
+        function playSquareSound(square) {
+            if (!soundEnabled) return;
+            
+            // Check cooldown to prevent sound spamming
+            const now = Date.now();
+            if (now - square.lastPlayTime < SOUND_COOLDOWN) return;
+            
+            // Update last play time
+            square.lastPlayTime = now;
+            
+            // Play the appropriate sound
+            const soundName = square.isBlue ? 'blue' : 'red';
+            playSound(soundName);
+        }
+        
+        // Toggle sound button
+        toggleSoundBtn.addEventListener('click', function() {
+            soundEnabled = !soundEnabled;
+            toggleSoundBtn.textContent = soundEnabled ? 'Sound: ON' : 'Sound: OFF';
+        });
         
         // Particle System
         class Particle {
@@ -648,7 +708,8 @@
                 hasThorns: false,
                 thornExpiryTime: 0,
                 originalSize: DEFAULT_SQUARE_SIZE,
-                isBlue
+                isBlue,
+                lastPlayTime: 0 // For sound cooldown
             };
         }
         
@@ -811,6 +872,10 @@
                 }
             }
             
+            // Play collision sound for both squares
+            playSquareSound(square1);
+            playSquareSound(square2);
+            
             // Check if damage should be dealt
             let damageDealt = false;
             let damagedSquare = null;
@@ -820,11 +885,13 @@
                 squares.forEach(sq => sq.hasThorns = false);
                 damageDealt = true;
                 damagedSquare = square2;
+                playSound('hit');
             } else if (square2.hasThorns && !square1.hasThorns) {
                 square1.size = Math.max(30, square1.size - 30);
                 squares.forEach(sq => sq.hasThorns = false);
                 damageDealt = true;
                 damagedSquare = square1;
+                playSound('hit');
             }
             
             // Create particle effect if damage was dealt
@@ -915,10 +982,12 @@
                             square.hasThorns = true;
                             square.thornExpiryTime = currentTime + THORN_DURATION;
                             
+                            playSound('knife');
                             setTimeout(spawnKnifePowerUp, KNIFE_SPAWN_INTERVAL);
                         } else if (powerUp.type === 'heal') {
                             square.size = Math.min(120, square.size + 30);
                             
+                            playSound('heal');
                             setTimeout(spawnHealPowerUp, HEAL_SPAWN_INTERVAL);
                         }
                         
@@ -950,6 +1019,9 @@
                     // Reflect horizontally
                     square.vx *= -1;
                     
+                    // Play sound
+                    playSquareSound(square);
+                    
                     // Update direction
                     if (square.direction === 0) square.direction = 1;
                     else if (square.direction === 1) square.direction = 0;
@@ -964,6 +1036,9 @@
                 if (square.y <= 0 || square.y + square.size >= canvas.height) {
                     // Reflect vertically
                     square.vy *= -1;
+                    
+                    // Play sound
+                    playSquareSound(square);
                     
                     // Update direction
                     if (square.direction === 0) square.direction = 3;
