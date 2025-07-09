@@ -24,7 +24,6 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            margin: 20px; /* Added margin for recording area */
         }
         .health-bars {
             display: flex;
@@ -237,7 +236,7 @@
             <button id="stopRecordBtn" class="stop-btn" disabled>Stop Recording</button>
             <button id="downloadBtn" class="download-btn" disabled>Download Video</button>
             <div class="recorder-info">
-                Records at 120fps in 1080p resolution (with extended area)
+                Records at 120fps in 1080p resolution
             </div>
         </div>
         
@@ -414,18 +413,17 @@
         
         // Particle System
         class Particle {
-            constructor(x, y, color = null) {
+            constructor(x, y, color = '#4ECDC4') {
                 this.x = x;
                 this.y = y;
-                this.size = Math.random() * 10 + 5; // Larger particles
-                this.speedX = (Math.random() - 0.5) * 12;
-                this.speedY = (Math.random() - 0.5) * 12;
+                this.size = Math.random() * 6 + 2;
+                this.speedX = (Math.random() - 0.5) * 8;
+                this.speedY = (Math.random() - 0.5) * 8;
                 this.life = 1;
                 this.decay = Math.random() * 0.02 + 0.01;
                 this.gravity = 0.1;
                 this.bounce = 0.7;
-                // Random multi-color if no specific color provided
-                this.color = color || `hsl(${Math.random() * 360}, 100%, 50%)`;
+                this.color = color;
             }
             
             update() {
@@ -454,7 +452,7 @@
                 ctx.save();
                 ctx.globalAlpha = this.life;
                 ctx.fillStyle = this.color;
-                ctx.shadowBlur = 15;
+                ctx.shadowBlur = 10;
                 ctx.shadowColor = this.color;
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
@@ -476,9 +474,9 @@
                 
                 // Configurable options
                 this.options = {
-                    color: options.color || null, // Null for multi-color
-                    particleCount: options.particleCount || 40, // More particles
-                    autoFade: false,
+                    color: options.color || '#4ECDC4',
+                    particleCount: options.particleCount || 25,
+                    autoFade: false, // Disabled to prevent grey background
                     ...options
                 };
                 
@@ -506,6 +504,7 @@
             }
             
             draw() {
+                // Draw particles without any background overlay
                 this.particles.forEach(particle => particle.draw(this.ctx));
             }
             
@@ -526,15 +525,12 @@
 
         // Create particle systems for each square
         const redParticles = new ParticleSystem(canvas, { 
-            particleCount: 50 // More particles for explosion
+            color: redHealthColor, 
+            particleCount: 30
         });
         const blueParticles = new ParticleSystem(canvas, { 
-            particleCount: 50 // More particles for explosion
-        });
-        
-        // Create special explosion particle system
-        const explosionParticles = new ParticleSystem(canvas, {
-            particleCount: 80 // Even more particles for destruction
+            color: blueHealthColor, 
+            particleCount: 30
         });
         
         // Background color control functions
@@ -574,16 +570,8 @@
             try {
                 recordedChunks = [];
                 
-                // Create a stream from the canvas wrapper (includes health bars and border)
-                const canvasWrapper = document.getElementById('canvas-wrapper');
-                const stream = await navigator.mediaDevices.getDisplayMedia({
-                    video: {
-                        mediaSource: 'screen',
-                        width: { ideal: canvasWrapper.offsetWidth + 40 }, // Extra space
-                        height: { ideal: canvasWrapper.offsetHeight + 40 } // Extra space
-                    },
-                    audio: false
-                });
+                // Create a stream from the canvas
+                const stream = canvas.captureStream(120); // 120 FPS
                 
                 // Set up MediaRecorder with high quality settings
                 const options = {
@@ -642,7 +630,7 @@
                 
             } catch (error) {
                 console.error('Error starting recording:', error);
-                alert('Error starting recording. Please make sure your browser supports screen recording and you select the correct area.');
+                alert('Error starting recording. Please make sure your browser supports canvas recording.');
             }
         }
         
@@ -680,7 +668,7 @@
             if (size >= 90) return 3;
             if (size >= 60) return 2;
             if (size >= 30) return 1;
-            return 0; // Return 0 when size is below 30
+            return 1;
         }
         
         // Create squares with 45° angles only
@@ -721,8 +709,7 @@
                 thornExpiryTime: 0,
                 originalSize: DEFAULT_SQUARE_SIZE,
                 isBlue,
-                lastPlayTime: 0, // For sound cooldown
-                active: true // To mark squares that are still in play
+                lastPlayTime: 0 // For sound cooldown
             };
         }
         
@@ -894,45 +881,21 @@
             let damagedSquare = null;
             
             if (square1.hasThorns && !square2.hasThorns) {
-                // If square is already small (size <= 15), set to 0 and mark inactive
-                if (square2.size <= 15) {
-                    square2.size = 0;
-                    square2.active = false;
-                    
-                    // Create big explosion effect
-                    const centerX = square2.x + square2.size / 2;
-                    const centerY = square2.y + square2.size / 2;
-                    explosionParticles.createExplosion(centerX, centerY, 100);
-                } else {
-                    square2.size = Math.max(15, square2.size - 30);
-                }
-                
+                square2.size = Math.max(30, square2.size - 30);
                 squares.forEach(sq => sq.hasThorns = false);
                 damageDealt = true;
                 damagedSquare = square2;
                 playSound('hit');
             } else if (square2.hasThorns && !square1.hasThorns) {
-                // If square is already small (size <= 15), set to 0 and mark inactive
-                if (square1.size <= 15) {
-                    square1.size = 0;
-                    square1.active = false;
-                    
-                    // Create big explosion effect
-                    const centerX = square1.x + square1.size / 2;
-                    const centerY = square1.y + square1.size / 2;
-                    explosionParticles.createExplosion(centerX, centerY, 100);
-                } else {
-                    square1.size = Math.max(15, square1.size - 30);
-                }
-                
+                square1.size = Math.max(30, square1.size - 30);
                 squares.forEach(sq => sq.hasThorns = false);
                 damageDealt = true;
                 damagedSquare = square1;
                 playSound('hit');
             }
             
-            // Create particle effect if damage was dealt but square wasn't destroyed
-            if (damageDealt && damagedSquare && damagedSquare.active) {
+            // Create particle effect if damage was dealt
+            if (damageDealt && damagedSquare) {
                 const centerX = damagedSquare.x + damagedSquare.size / 2;
                 const centerY = damagedSquare.y + damagedSquare.size / 2;
                 
@@ -1011,7 +974,6 @@
                 let powerUpCollected = false;
                 for (let j = 0; j < squares.length; j++) {
                     const square = squares[j];
-                    if (!square.active) continue;
                     
                     if (checkPowerUpCollision(square, powerUp)) {
                         if (powerUp.type === 'knife') {
@@ -1042,7 +1004,6 @@
             // Update and draw squares
             for (let i = 0; i < squares.length; i++) {
                 const square = squares[i];
-                if (!square.active) continue;
                 
                 // Check if thorns effect has expired
                 if (square.hasThorns && currentTime > square.thornExpiryTime) {
@@ -1090,40 +1051,36 @@
                     if (square.y + square.size >= canvas.height) square.y = canvas.height - square.size;
                 }
                 
-                // Only draw if square is visible (size > 0)
-                if (square.size > 0) {
-                    // Draw the square with its image
-                    ctx.drawImage(square.img, square.x, square.y, square.size, square.size);
-                    
-                    // Draw stroke around the square
-                    ctx.strokeStyle = '#333';
-                    ctx.lineWidth = 2;
-                    ctx.strokeRect(square.x, square.y, square.size, square.size);
-                    
-                    // Draw thorns if square has them
-                    if (square.hasThorns) {
-                        drawThorns(square);
-                    }
+                // Draw the square with its image
+                ctx.drawImage(square.img, square.x, square.y, square.size, square.size);
+                
+                // Draw stroke around the square
+                ctx.strokeStyle = '#333';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(square.x, square.y, square.size, square.size);
+                
+                // Draw thorns if square has them
+                if (square.hasThorns) {
+                    drawThorns(square);
                 }
             }
             
             // Update health based on square sizes
-            redSquareHealth = calculateHealth(squares[1].active ? squares[1].size : 0);
-            blueSquareHealth = calculateHealth(squares[0].active ? squares[0].size : 0);
+            redSquareHealth = calculateHealth(squares[1].size); // Red square is index 1
+            blueSquareHealth = calculateHealth(squares[0].size); // Blue square is index 0
             
             // Update health bar displays
             updateHealthBar(redHealthBar, redSquareHealth, 6, redHealthColor);
             updateHealthBar(blueHealthBar, blueSquareHealth, 6, blueHealthColor);
             
-            // Check collision between squares if both are active
-            if (squares[0].active && squares[1].active && checkCollision(squares[0], squares[1])) {
+            // Check collision between squares
+            if (checkCollision(squares[0], squares[1])) {
                 handleCollision(squares[0], squares[1]);
             }
             
             // Update and draw particles
             redParticles.animate();
             blueParticles.animate();
-            explosionParticles.animate();
         }
 
         // Animation loop
@@ -1158,7 +1115,6 @@
             // Clear particles
             redParticles.clear();
             blueParticles.clear();
-            explosionParticles.clear();
             
             // Spawn knife immediately on reset
             spawnKnifePowerUp();
@@ -1195,12 +1151,14 @@
         redHealthColorInput.addEventListener('input', function() {
             if (isValidHexColor(this.value)) {
                 redHealthColor = this.value;
+                redParticles.options.color = this.value;
             }
         });
         
         blueHealthColorInput.addEventListener('input', function() {
             if (isValidHexColor(this.value)) {
                 blueHealthColor = this.value;
+                blueParticles.options.color = this.value;
             }
         });
         
@@ -1209,4 +1167,4 @@
         updateHealthBar(blueHealthBar, blueSquareHealth, 4, blueHealthColor);
     </script>
 </body>
-</html>
+    </html>
