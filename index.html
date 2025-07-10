@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Enhanced Bouncing Squares Simulation with Screen Recorder</title>
+    <title>Bouncing Squares with Glowing Frame</title>
     <style>
         body {
             display: flex;
@@ -198,6 +198,16 @@
             text-align: center;
             margin-top: 5px;
         }
+        .frame-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
     </style>
 </head>
 <body>
@@ -248,6 +258,15 @@
             <button id="applyBackgroundBtn">Apply</button>
             <button id="restoreBackgroundBtn" class="restore-btn">Restore Previous</button>
             <button id="toggleSoundBtn" class="sound-btn">Sound: ON</button>
+        </div>
+        
+        <!-- Frame Controls -->
+        <div class="frame-controls">
+            <label for="frameColor">Frame Color:</label>
+            <input type="text" id="frameColor" class="color-input" value="#00ff00" placeholder="#RRGGBB">
+            <input type="color" id="frameColorPicker" class="color-picker-input" value="#00ff00">
+            <button id="resetFrameBtn">Reset Frame</button>
+            <span id="frameSizeInfo">Frame Size: 25px</span>
         </div>
         
         <div class="controls">
@@ -303,6 +322,12 @@
         const applyBackgroundBtn = document.getElementById('applyBackgroundBtn');
         const restoreBackgroundBtn = document.getElementById('restoreBackgroundBtn');
         
+        // Frame controls
+        const frameColorInput = document.getElementById('frameColor');
+        const frameColorPicker = document.getElementById('frameColorPicker');
+        const resetFrameBtn = document.getElementById('resetFrameBtn');
+        const frameSizeInfo = document.getElementById('frameSizeInfo');
+        
         // Screen Recorder Elements
         const startRecordBtn = document.getElementById('startRecordBtn');
         const stopRecordBtn = document.getElementById('stopRecordBtn');
@@ -323,7 +348,13 @@
         let mediaRecorder = null;
         let recordedChunks = [];
         let isRecording = false;
-        let originalUpdate = null; // To store the original update function
+        let originalUpdate = null;
+        
+        // Frame variables
+        let frameSize = 25;
+        let frameColor = "#00ff00";
+        let frameShrinkCount = 0;
+        const MAX_FRAME_SHRINK = 200; // Maximum shrink amount (20px total)
         
         // Health bar elements
         const redHealthBar = document.getElementById('redHealthBar');
@@ -336,10 +367,10 @@
         let blueThornColor = "#BEBEBE";
         let redHealthColor = "#e74c3c";
         let blueHealthColor = "#3498db";
-        let canvasBackgroundColor = "#ffffff"; // Default white background
-        let oldBackgroundColor = canvasBackgroundColor; // Store the original background color
+        let canvasBackgroundColor = "#ffffff";
+        let oldBackgroundColor = canvasBackgroundColor;
         let soundEnabled = true;
-        const SOUND_COOLDOWN = 300; // 300ms cooldown between sounds
+        const SOUND_COOLDOWN = 300;
         
         // Health tracking
         let redSquareHealth = 4;
@@ -394,14 +425,11 @@
         function playSquareSound(square) {
             if (!soundEnabled) return;
             
-            // Check cooldown to prevent sound spamming
             const now = Date.now();
             if (now - square.lastPlayTime < SOUND_COOLDOWN) return;
             
-            // Update last play time
             square.lastPlayTime = now;
             
-            // Play the appropriate sound
             const soundName = square.isBlue ? 'blue' : 'red';
             playSound(soundName);
         }
@@ -434,14 +462,12 @@
                 this.life -= this.decay;
                 this.size *= 0.995;
                 
-                // Bounce off bottom
                 if (this.y + this.size > this.canvasHeight) {
                     this.y = this.canvasHeight - this.size;
                     this.speedY *= -this.bounce;
                     this.speedX *= 0.9;
                 }
                 
-                // Bounce off sides
                 if (this.x + this.size > this.canvasWidth || this.x - this.size < 0) {
                     this.speedX *= -this.bounce;
                 }
@@ -473,11 +499,10 @@
                 this.ctx = canvas.getContext('2d');
                 this.particles = [];
                 
-                // Configurable options
                 this.options = {
                     color: options.color || '#4ECDC4',
                     particleCount: options.particleCount || 25,
-                    autoFade: false, // Disabled to prevent grey background
+                    autoFade: false,
                     ...options
                 };
                 
@@ -505,7 +530,6 @@
             }
             
             draw() {
-                // Draw particles without any background overlay
                 this.particles.forEach(particle => particle.draw(this.ctx));
             }
             
@@ -537,12 +561,61 @@
         // Background color control functions
         function applyBackgroundColor(color) {
             if (isValidHexColor(color)) {
-                oldBackgroundColor = canvasBackgroundColor; // Store current color before changing
+                oldBackgroundColor = canvasBackgroundColor;
                 canvasBackgroundColor = color;
                 canvas.style.backgroundColor = color;
                 backgroundColorText.value = color;
                 backgroundColorPicker.value = color;
             }
+        }
+        
+        // Frame control functions
+        function applyFrameColor(color) {
+            if (isValidHexColor(color)) {
+                frameColor = color;
+                frameColorInput.value = color;
+                frameColorPicker.value = color;
+            }
+        }
+        
+        function resetFrame() {
+            frameSize = 25;
+            frameShrinkCount = 0;
+            updateFrameSizeInfo();
+        }
+        
+        function updateFrameSizeInfo() {
+            frameSizeInfo.textContent = `Frame Size: ${frameSize.toFixed(1)}px`;
+        }
+        
+        function drawFrame(ctx, offsetX = 0, offsetY = 0) {
+            const effectiveFrameSize = frameSize - (frameShrinkCount * 0.1);
+            if (effectiveFrameSize <= 0) return;
+            
+            ctx.save();
+            
+            // Outer glow effect
+            const gradient = ctx.createRadialGradient(
+                canvas.width/2 + offsetX, canvas.height/2 + offsetY, 0,
+                canvas.width/2 + offsetX, canvas.height/2 + offsetY, effectiveFrameSize * 2
+            );
+            gradient.addColorStop(0, frameColor);
+            gradient.addColorStop(1, 'transparent');
+            
+            ctx.shadowColor = frameColor;
+            ctx.shadowBlur = 15;
+            ctx.lineWidth = effectiveFrameSize;
+            ctx.strokeStyle = gradient;
+            
+            // Draw the frame rectangle
+            ctx.strokeRect(
+                offsetX + effectiveFrameSize/2, 
+                offsetY + effectiveFrameSize/2, 
+                canvas.width - effectiveFrameSize, 
+                canvas.height - effectiveFrameSize
+            );
+            
+            ctx.restore();
         }
         
         // Event listeners for background color controls
@@ -566,25 +639,44 @@
             applyBackgroundColor(oldBackgroundColor);
         });
         
+        // Frame color controls
+        frameColorInput.addEventListener('input', function() {
+            applyFrameColor(this.value);
+        });
+        
+        frameColorPicker.addEventListener('input', function() {
+            applyFrameColor(this.value);
+        });
+        
+        resetFrameBtn.addEventListener('click', resetFrame);
+        
         // Screen Recording Functions
         async function startRecording() {
             try {
                 recordedChunks = [];
                 
-                // Create an off-screen canvas that's 25px larger on each side
+                // Create an off-screen canvas that's larger to accommodate the frame
+                const framePadding = Math.max(frameSize, 25) * 2;
                 const recordingCanvas = document.createElement('canvas');
-                recordingCanvas.width = canvas.width + 50; // 25px on each side
-                recordingCanvas.height = canvas.height + 50; // 25px on each side
+                recordingCanvas.width = canvas.width + framePadding;
+                recordingCanvas.height = canvas.height + framePadding;
                 const recordingCtx = recordingCanvas.getContext('2d');
                 
-                // Function to copy main canvas to recording canvas with border
+                // Function to copy main canvas to recording canvas with frame
                 function copyToRecordingCanvas() {
                     // Clear the recording canvas with background color
                     recordingCtx.fillStyle = canvasBackgroundColor;
                     recordingCtx.fillRect(0, 0, recordingCanvas.width, recordingCanvas.height);
                     
-                    // Draw the main canvas centered in the recording canvas (25px offset)
-                    recordingCtx.drawImage(canvas, 25, 25);
+                    // Calculate offset to center the canvas in the recording canvas
+                    const offsetX = (recordingCanvas.width - canvas.width) / 2;
+                    const offsetY = (recordingCanvas.height - canvas.height) / 2;
+                    
+                    // Draw the frame first
+                    drawFrame(recordingCtx, offsetX, offsetY);
+                    
+                    // Draw the main canvas centered in the recording canvas
+                    recordingCtx.drawImage(canvas, offsetX, offsetY);
                 }
                 
                 // Store the original update function
@@ -604,15 +696,13 @@
                 // Set up MediaRecorder with high quality settings
                 const options = {
                     mimeType: 'video/webm;codecs=vp9',
-                    videoBitsPerSecond: 8000000 // 8 Mbps for high quality
+                    videoBitsPerSecond: 8000000
                 };
                 
-                // Fallback for browsers that don't support VP9
                 if (!MediaRecorder.isTypeSupported(options.mimeType)) {
                     options.mimeType = 'video/webm;codecs=vp8';
                 }
                 
-                // Final fallback
                 if (!MediaRecorder.isTypeSupported(options.mimeType)) {
                     options.mimeType = 'video/webm';
                 }
@@ -632,7 +722,6 @@
                     const blob = new Blob(recordedChunks, { type: 'video/webm' });
                     const url = URL.createObjectURL(blob);
                     
-                    // Enable download button
                     downloadBtn.disabled = false;
                     downloadBtn.onclick = () => {
                         const a = document.createElement('a');
@@ -643,7 +732,6 @@
                         document.body.removeChild(a);
                     };
                     
-                    // Update UI
                     recordingStatus.textContent = 'Recording Complete - Ready to Download';
                     recordingIndicator.classList.remove('active');
                 };
@@ -670,7 +758,6 @@
                 mediaRecorder.stop();
                 isRecording = false;
                 
-                // Update UI
                 startRecordBtn.disabled = false;
                 stopRecordBtn.disabled = true;
                 recordingStatus.textContent = 'Processing...';
@@ -740,7 +827,7 @@
                 thornExpiryTime: 0,
                 originalSize: DEFAULT_SQUARE_SIZE,
                 isBlue,
-                lastPlayTime: 0 // For sound cooldown
+                lastPlayTime: 0
             };
         }
         
@@ -817,6 +904,17 @@
                    square1.x + square1.size > square2.x &&
                    square1.y < square2.y + square2.size &&
                    square1.y + square1.size > square2.y;
+        }
+
+        // Function to check collision with frame
+        function checkFrameCollision(square) {
+            const effectiveFrameSize = frameSize - (frameShrinkCount * 0.1);
+            if (effectiveFrameSize <= 0) return false;
+            
+            return (square.x <= effectiveFrameSize ||
+                    square.x + square.size >= canvas.width - effectiveFrameSize ||
+                    square.y <= effectiveFrameSize ||
+                    square.y + square.size >= canvas.height - effectiveFrameSize);
         }
 
         // Determine which side of square2 was hit by square1
@@ -996,6 +1094,11 @@
             ctx.fillStyle = canvasBackgroundColor;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
+            // Draw the frame (only visible in recording)
+            if (!isRecording) {
+                drawFrame(ctx);
+            }
+            
             // Update and draw power-ups
             for (let i = powerUps.length - 1; i >= 0; i--) {
                 const powerUp = powerUps[i];
@@ -1045,8 +1148,18 @@
                 square.x += square.vx * speedMultiplier;
                 square.y += square.vy * speedMultiplier;
                 
-                // Check boundary collision (with border)
-                if (square.x <= 0 || square.x + square.size >= canvas.width) {
+                // Check collision with frame
+                const frameCollision = checkFrameCollision(square);
+                if (frameCollision && frameShrinkCount < MAX_FRAME_SHRINK) {
+                    frameShrinkCount++;
+                    updateFrameSizeInfo();
+                }
+                
+                // Check boundary collision (with frame)
+                const effectiveFrameSize = frameSize - (frameShrinkCount * 0.1);
+                const frameBoundary = effectiveFrameSize > 0 ? effectiveFrameSize : 0;
+                
+                if (square.x <= frameBoundary || square.x + square.size >= canvas.width - frameBoundary) {
                     // Reflect horizontally
                     square.vx *= -1;
                     
@@ -1060,11 +1173,13 @@
                     else if (square.direction === 3) square.direction = 2;
                     
                     // Keep inside bounds
-                    if (square.x <= 0) square.x = 0;
-                    if (square.x + square.size >= canvas.width) square.x = canvas.width - square.size;
+                    if (square.x <= frameBoundary) square.x = frameBoundary;
+                    if (square.x + square.size >= canvas.width - frameBoundary) {
+                        square.x = canvas.width - frameBoundary - square.size;
+                    }
                 }
                 
-                if (square.y <= 0 || square.y + square.size >= canvas.height) {
+                if (square.y <= frameBoundary || square.y + square.size >= canvas.height - frameBoundary) {
                     // Reflect vertically
                     square.vy *= -1;
                     
@@ -1078,8 +1193,10 @@
                     else if (square.direction === 3) square.direction = 0;
                     
                     // Keep inside bounds
-                    if (square.y <= 0) square.y = 0;
-                    if (square.y + square.size >= canvas.height) square.y = canvas.height - square.size;
+                    if (square.y <= frameBoundary) square.y = frameBoundary;
+                    if (square.y + square.size >= canvas.height - frameBoundary) {
+                        square.y = canvas.height - frameBoundary - square.size;
+                    }
                 }
                 
                 // Draw the square with its image
@@ -1097,8 +1214,8 @@
             }
             
             // Update health based on square sizes
-            redSquareHealth = calculateHealth(squares[1].size); // Red square is index 1
-            blueSquareHealth = calculateHealth(squares[0].size); // Blue square is index 0
+            redSquareHealth = calculateHealth(squares[1].size);
+            blueSquareHealth = calculateHealth(squares[0].size);
             
             // Update health bar displays
             updateHealthBar(redHealthBar, redSquareHealth, 6, redHealthColor);
@@ -1128,26 +1245,23 @@
         setTimeout(spawnHealPowerUp, HEAL_SPAWN_INTERVAL);
         
         // Event listeners for buttons
-        // Reset button event listener
         resetBtn.addEventListener('click', function() {
             squares = [
-                createSquare(100, 150, 0, '#3498db', 'blue.png', true), // Down-right (blue)
-                createSquare(280, 300, 2, '#e74c3c', 'red.png', false)  // Up-left (red)
+                createSquare(100, 150, 0, '#3498db', 'blue.png', true),
+                createSquare(280, 300, 2, '#e74c3c', 'red.png', false)
             ];
             powerUps = [];
             speedMultiplier = 1;
             isPaused = false;
             pauseBtn.textContent = 'Pause';
             
-            // Reset health
             redSquareHealth = 4;
             blueSquareHealth = 4;
             
-            // Clear particles
             redParticles.clear();
             blueParticles.clear();
             
-            // Spawn knife immediately on reset
+            resetFrame();
             spawnKnifePowerUp();
         });
 
@@ -1196,6 +1310,7 @@
         // Initialize health bars with default colors
         updateHealthBar(redHealthBar, redSquareHealth, 4, redHealthColor);
         updateHealthBar(blueHealthBar, blueSquareHealth, 4, blueHealthColor);
+        updateFrameSizeInfo();
     </script>
 </body>
-</html>
+    </html>
