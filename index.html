@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Bouncing Squares with Improved Shrinking Frame</title>
+    <title>Bouncing Squares with Audio Recording</title>
     <style>
         body {
             display: flex;
@@ -246,7 +246,7 @@
             <button id="stopRecordBtn" class="stop-btn" disabled>Stop Recording</button>
             <button id="downloadBtn" class="download-btn" disabled>Download Video</button>
             <div class="recorder-info">
-                Records at 120fps in 1080p resolution
+                Records at 120fps in 1080p resolution with audio
             </div>
         </div>
         
@@ -306,6 +306,11 @@
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         
+        // Audio context variables
+        let audioContext = null;
+        let audioDestination = null;
+        let audioSources = {};
+        
         // Buttons
         const resetBtn = document.getElementById('resetBtn');
         const pauseBtn = document.getElementById('pauseBtn');
@@ -350,7 +355,7 @@
         let isRecording = false;
         let originalUpdate = null;
         
-        // Frame variables - Updated with 20px initial inset
+        // Frame variables
         let frameBounds = {
             left: 20,
             right: canvas.width - 20,
@@ -417,6 +422,27 @@
         const HEAL_SPAWN_INTERVAL = 15000;
         const THORN_DURATION = 7000;
         const POWER_UP_SIZE = 60;
+        
+        // Initialize audio system
+        function initializeAudio() {
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                audioDestination = audioContext.createMediaStreamDestination();
+                
+                // Connect each audio element to the destination
+                Object.keys(sounds).forEach(key => {
+                    const audioElement = sounds[key];
+                    const source = audioContext.createMediaElementSource(audioElement);
+                    source.connect(audioDestination);
+                    source.connect(audioContext.destination); // Also play through speakers
+                    audioSources[key] = source;
+                });
+                
+                console.log("Audio system initialized");
+            } catch (error) {
+                console.error("Error initializing audio:", error);
+            }
+        }
         
         // Power-up spawn functions
         function spawnKnifePowerUp() {
@@ -624,7 +650,7 @@
         }
         
         function shrinkFrame() {
-            // Shrink all boundaries inward by 0.2px (changed from 0.1px)
+            // Shrink all boundaries inward by 0.2px
             frameBounds.left += 0.2;
             frameBounds.right -= 0.2;
             frameBounds.top += 0.2;
@@ -648,7 +674,7 @@
             // Save current context state
             ctx.save();
             
-            // Set up glow effect (reduced from 15 to 8)
+            // Set up glow effect
             ctx.shadowColor = frameColor;
             ctx.shadowBlur = 8;
             ctx.shadowOffsetX = 0;
@@ -666,7 +692,7 @@
                 frameBounds.bottom - frameBounds.top
             );
             
-            // Draw inner glow effect (reduced from 8 to 4)
+            // Draw inner glow effect
             ctx.shadowBlur = 4;
             ctx.strokeRect(
                 frameBounds.left, 
@@ -725,9 +751,19 @@
             };
         }
         
-        // Screen Recording Functions
+        // Screen Recording Functions with Audio
         async function startRecording() {
             try {
+                // Initialize audio if not already done
+                if (!audioContext) {
+                    initializeAudio();
+                }
+                
+                // Resume audio context if suspended
+                if (audioContext.state === 'suspended') {
+                    await audioContext.resume();
+                }
+                
                 recordedChunks = [];
                 
                 // Create an off-screen canvas that matches the visible canvas size
@@ -771,8 +807,17 @@
                     }
                 };
                 
-                // Create stream from the recording canvas
-                const stream = recordingCanvas.captureStream(120);
+                // Get canvas stream
+                const canvasStream = recordingCanvas.captureStream(120);
+                
+                // Get audio stream
+                const audioStream = audioDestination.stream;
+                
+                // Combine video and audio tracks
+                const combinedStream = new MediaStream([
+                    ...canvasStream.getVideoTracks(),
+                    ...audioStream.getAudioTracks()
+                ]);
                 
                 // Set up MediaRecorder with high quality settings
                 const options = {
@@ -788,7 +833,7 @@
                     options.mimeType = 'video/webm';
                 }
                 
-                mediaRecorder = new MediaRecorder(stream, options);
+                mediaRecorder = new MediaRecorder(combinedStream, options);
                 
                 mediaRecorder.ondataavailable = (event) => {
                     if (event.data.size > 0) {
@@ -818,7 +863,7 @@
                 };
                 
                 // Start recording
-                mediaRecorder.start();
+                mediaRecorder.start(100); // Collect data every 100ms
                 isRecording = true;
                 
                 // Update UI
@@ -830,7 +875,7 @@
                 
             } catch (error) {
                 console.error('Error starting recording:', error);
-                alert('Error starting recording. Please make sure your browser supports canvas recording.');
+                alert('Error starting recording. Please make sure your browser supports canvas recording with audio.');
             }
         }
         
@@ -846,12 +891,15 @@
         }
         
         // Event listeners for recording controls
-        if (startRecordBtn) {
-            startRecordBtn.addEventListener('click', startRecording);
-        }
-        if (stopRecordBtn) {
-            stopRecordBtn.addEventListener('click', stopRecording);
-        }
+        startRecordBtn.addEventListener('click', async function() {
+            // First user interaction will initialize audio
+            if (!audioContext) {
+                initializeAudio();
+            }
+            startRecording();
+        });
+        
+        stopRecordBtn.addEventListener('click', stopRecording);
         
         // Function to update health bar display
         function updateHealthBar(healthBar, health, maxHealth, color) {
@@ -1271,45 +1319,39 @@
         setTimeout(spawnHealPowerUp, HEAL_SPAWN_INTERVAL);
         
         // Event listeners for buttons
-        if (resetBtn) {
-            resetBtn.addEventListener('click', function() {
-                squares = [
-                    createSquare(100, 150, 0, '#3498db', 'blue.png', true),
-                    createSquare(500, 400, 2, '#e74c3c', 'red.png', false)
-                ];
-                powerUps = [];
-                speedMultiplier = 1;
-                isPaused = false;
-                pauseBtn.textContent = 'Pause';
-                
-                // Reset health
-                redSquareHealth = 4;
-                blueSquareHealth = 4;
-                
-                // Reset frame
-                resetFrame();
-                
-                // Clear particles
-                redParticles.clear();
-                blueParticles.clear();
-                
-                // Spawn knife immediately on reset
-                spawnKnifePowerUp();
-            });
-        }
+        resetBtn.addEventListener('click', function() {
+            squares = [
+                createSquare(100, 150, 0, '#3498db', 'blue.png', true),
+                createSquare(500, 400, 2, '#e74c3c', 'red.png', false)
+            ];
+            powerUps = [];
+            speedMultiplier = 1;
+            isPaused = false;
+            pauseBtn.textContent = 'Pause';
+            
+            // Reset health
+            redSquareHealth = 4;
+            blueSquareHealth = 4;
+            
+            // Reset frame
+            resetFrame();
+            
+            // Clear particles
+            redParticles.clear();
+            blueParticles.clear();
+            
+            // Spawn knife immediately on reset
+            spawnKnifePowerUp();
+        });
 
-        if (pauseBtn) {
-            pauseBtn.addEventListener('click', function() {
-                isPaused = !isPaused;
-                pauseBtn.textContent = isPaused ? 'Resume' : 'Pause';
-            });
-        }
+        pauseBtn.addEventListener('click', function() {
+            isPaused = !isPaused;
+            pauseBtn.textContent = isPaused ? 'Resume' : 'Pause';
+        });
 
-        if (speedBtn) {
-            speedBtn.addEventListener('click', function() {
-                speedMultiplier = (speedMultiplier >= 3) ? 1 : speedMultiplier + 0.5;
-            });
-        }
+        speedBtn.addEventListener('click', function() {
+            speedMultiplier = (speedMultiplier >= 3) ? 1 : speedMultiplier + 0.5;
+        });
         
         // Color input validation function
         function isValidHexColor(color) {
@@ -1317,40 +1359,32 @@
         }
         
         // Thorn color input event listeners
-        if (redThornColorInput) {
-            redThornColorInput.addEventListener('input', function() {
-                if (isValidHexColor(this.value)) {
-                    redThornColor = this.value;
-                }
-            });
-        }
+        redThornColorInput.addEventListener('input', function() {
+            if (isValidHexColor(this.value)) {
+                redThornColor = this.value;
+            }
+        });
         
-        if (blueThornColorInput) {
-            blueThornColorInput.addEventListener('input', function() {
-                if (isValidHexColor(this.value)) {
-                    blueThornColor = this.value;
-                }
-            });
-        }
+        blueThornColorInput.addEventListener('input', function() {
+            if (isValidHexColor(this.value)) {
+                blueThornColor = this.value;
+            }
+        });
         
         // Health bar color input event listeners
-        if (redHealthColorInput) {
-            redHealthColorInput.addEventListener('input', function() {
-                if (isValidHexColor(this.value)) {
-                    redHealthColor = this.value;
-                    redParticles.options.color = this.value;
-                }
-            });
-        }
+        redHealthColorInput.addEventListener('input', function() {
+            if (isValidHexColor(this.value)) {
+                redHealthColor = this.value;
+                redParticles.options.color = this.value;
+            }
+        });
         
-        if (blueHealthColorInput) {
-            blueHealthColorInput.addEventListener('input', function() {
-                if (isValidHexColor(this.value)) {
-                    blueHealthColor = this.value;
-                    blueParticles.options.color = this.value;
-                }
-            });
-        }
+        blueHealthColorInput.addEventListener('input', function() {
+            if (isValidHexColor(this.value)) {
+                blueHealthColor = this.value;
+                blueParticles.options.color = this.value;
+            }
+        });
         
         // Initialize health bars with default colors
         updateHealthBar(redHealthBar, redSquareHealth, 4, redHealthColor);
