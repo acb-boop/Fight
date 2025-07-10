@@ -391,18 +391,22 @@
         const redSquareImg = new Image();
         redSquareImg.src = "red.png";
         let redSquareImgLoaded = true;
+        redSquareImg.onerror = () => { redSquareImgLoaded = false; console.log("Red square image failed to load"); };
         
         const blueSquareImg = new Image();
         blueSquareImg.src = "blue.png";
         let blueSquareImgLoaded = true;
+        blueSquareImg.onerror = () => { blueSquareImgLoaded = false; console.log("Blue square image failed to load"); };
         
         const knifeImg = new Image();
         knifeImg.src = "knife.png";
         let knifeImgLoaded = true;
+        knifeImg.onerror = () => { knifeImgLoaded = false; console.log("Knife image failed to load"); };
         
         const healImg = new Image();
         healImg.src = "heal.png";
         let healImgLoaded = true;
+        healImg.onerror = () => { healImgLoaded = false; console.log("Heal image failed to load"); };
         
         // Fallback colors for squares
         const RED_SQUARE_COLOR = '#e74c3c';
@@ -413,6 +417,33 @@
         const HEAL_SPAWN_INTERVAL = 15000;
         const THORN_DURATION = 7000;
         const POWER_UP_SIZE = 60;
+        
+        // Power-up spawn functions
+        function spawnKnifePowerUp() {
+            if (knifeImgLoaded) {
+                const pos = getRandomPosition();
+                powerUps.push({
+                    x: pos.x,
+                    y: pos.y,
+                    size: POWER_UP_SIZE,
+                    type: 'knife',
+                    img: knifeImg
+                });
+            }
+        }
+        
+        function spawnHealPowerUp() {
+            if (healImgLoaded) {
+                const pos = getRandomPosition();
+                powerUps.push({
+                    x: pos.x,
+                    y: pos.y,
+                    size: POWER_UP_SIZE,
+                    type: 'heal',
+                    img: healImg
+                });
+            }
+        }
         
         // Sound functions
         function playSound(soundName) {
@@ -711,8 +742,19 @@
                     recordingCtx.fillStyle = canvasBackgroundColor;
                     recordingCtx.fillRect(0, 0, recordingCanvas.width, recordingCanvas.height);
                     
-                    // Draw the frame
-                    drawCollisionFrame.call({ ctx: recordingCtx });
+                    // Draw the frame directly on the recording context
+                    recordingCtx.save();
+                    recordingCtx.shadowColor = frameColor;
+                    recordingCtx.shadowBlur = 8;
+                    recordingCtx.strokeStyle = frameColor;
+                    recordingCtx.lineWidth = frameThickness;
+                    recordingCtx.strokeRect(
+                        frameBounds.left, 
+                        frameBounds.top, 
+                        frameBounds.right - frameBounds.left, 
+                        frameBounds.bottom - frameBounds.top
+                    );
+                    recordingCtx.restore();
                     
                     // Draw the main canvas content
                     recordingCtx.drawImage(canvas, 0, 0);
@@ -804,8 +846,12 @@
         }
         
         // Event listeners for recording controls
-        startRecordBtn.addEventListener('click', startRecording);
-        stopRecordBtn.addEventListener('click', stopRecording);
+        if (startRecordBtn) {
+            startRecordBtn.addEventListener('click', startRecording);
+        }
+        if (stopRecordBtn) {
+            stopRecordBtn.addEventListener('click', stopRecording);
+        }
         
         // Function to update health bar display
         function updateHealthBar(healthBar, health, maxHealth, color) {
@@ -1079,7 +1125,13 @@
             for (let i = powerUps.length - 1; i >= 0; i--) {
                 const powerUp = powerUps[i];
                 
-                ctx.drawImage(powerUp.img, powerUp.x, powerUp.y, powerUp.size, powerUp.size);
+                if (powerUp.img.complete && powerUp.img.naturalWidth > 0) {
+                    ctx.drawImage(powerUp.img, powerUp.x, powerUp.y, powerUp.size, powerUp.size);
+                } else {
+                    // Fallback for power-up images
+                    ctx.fillStyle = powerUp.type === 'knife' ? '#333' : '#2ecc71';
+                    ctx.fillRect(powerUp.x, powerUp.y, powerUp.size, powerUp.size);
+                }
                 
                 let powerUpCollected = false;
                 for (let j = 0; j < squares.length; j++) {
@@ -1167,8 +1219,14 @@
                     if (square.y + square.size >= frameBounds.bottom) square.y = frameBounds.bottom - square.size;
                 }
                 
-                // Draw the square with its image
-                ctx.drawImage(square.img, square.x, square.y, square.size, square.size);
+                // Draw the square with its image or fallback color
+                if (square.img.complete && square.img.naturalWidth > 0) {
+                    ctx.drawImage(square.img, square.x, square.y, square.size, square.size);
+                } else {
+                    // Fallback to colored rectangles
+                    ctx.fillStyle = square.isBlue ? BLUE_SQUARE_COLOR : RED_SQUARE_COLOR;
+                    ctx.fillRect(square.x, square.y, square.size, square.size);
+                }
                 
                 // Draw stroke around the square
                 ctx.strokeStyle = '#333';
@@ -1213,39 +1271,45 @@
         setTimeout(spawnHealPowerUp, HEAL_SPAWN_INTERVAL);
         
         // Event listeners for buttons
-        resetBtn.addEventListener('click', function() {
-            squares = [
-                createSquare(100, 150, 0, '#3498db', 'blue.png', true),
-                createSquare(500, 400, 2, '#e74c3c', 'red.png', false)
-            ];
-            powerUps = [];
-            speedMultiplier = 1;
-            isPaused = false;
-            pauseBtn.textContent = 'Pause';
-            
-            // Reset health
-            redSquareHealth = 4;
-            blueSquareHealth = 4;
-            
-            // Reset frame
-            resetFrame();
-            
-            // Clear particles
-            redParticles.clear();
-            blueParticles.clear();
-            
-            // Spawn knife immediately on reset
-            spawnKnifePowerUp();
-        });
+        if (resetBtn) {
+            resetBtn.addEventListener('click', function() {
+                squares = [
+                    createSquare(100, 150, 0, '#3498db', 'blue.png', true),
+                    createSquare(500, 400, 2, '#e74c3c', 'red.png', false)
+                ];
+                powerUps = [];
+                speedMultiplier = 1;
+                isPaused = false;
+                pauseBtn.textContent = 'Pause';
+                
+                // Reset health
+                redSquareHealth = 4;
+                blueSquareHealth = 4;
+                
+                // Reset frame
+                resetFrame();
+                
+                // Clear particles
+                redParticles.clear();
+                blueParticles.clear();
+                
+                // Spawn knife immediately on reset
+                spawnKnifePowerUp();
+            });
+        }
 
-        pauseBtn.addEventListener('click', function() {
-            isPaused = !isPaused;
-            pauseBtn.textContent = isPaused ? 'Resume' : 'Pause';
-        });
+        if (pauseBtn) {
+            pauseBtn.addEventListener('click', function() {
+                isPaused = !isPaused;
+                pauseBtn.textContent = isPaused ? 'Resume' : 'Pause';
+            });
+        }
 
-        speedBtn.addEventListener('click', function() {
-            speedMultiplier = (speedMultiplier >= 3) ? 1 : speedMultiplier + 0.5;
-        });
+        if (speedBtn) {
+            speedBtn.addEventListener('click', function() {
+                speedMultiplier = (speedMultiplier >= 3) ? 1 : speedMultiplier + 0.5;
+            });
+        }
         
         // Color input validation function
         function isValidHexColor(color) {
@@ -1253,32 +1317,40 @@
         }
         
         // Thorn color input event listeners
-        redThornColorInput.addEventListener('input', function() {
-            if (isValidHexColor(this.value)) {
-                redThornColor = this.value;
-            }
-        });
+        if (redThornColorInput) {
+            redThornColorInput.addEventListener('input', function() {
+                if (isValidHexColor(this.value)) {
+                    redThornColor = this.value;
+                }
+            });
+        }
         
-        blueThornColorInput.addEventListener('input', function() {
-            if (isValidHexColor(this.value)) {
-                blueThornColor = this.value;
-            }
-        });
+        if (blueThornColorInput) {
+            blueThornColorInput.addEventListener('input', function() {
+                if (isValidHexColor(this.value)) {
+                    blueThornColor = this.value;
+                }
+            });
+        }
         
         // Health bar color input event listeners
-        redHealthColorInput.addEventListener('input', function() {
-            if (isValidHexColor(this.value)) {
-                redHealthColor = this.value;
-                redParticles.options.color = this.value;
-            }
-        });
+        if (redHealthColorInput) {
+            redHealthColorInput.addEventListener('input', function() {
+                if (isValidHexColor(this.value)) {
+                    redHealthColor = this.value;
+                    redParticles.options.color = this.value;
+                }
+            });
+        }
         
-        blueHealthColorInput.addEventListener('input', function() {
-            if (isValidHexColor(this.value)) {
-                blueHealthColor = this.value;
-                blueParticles.options.color = this.value;
-            }
-        });
+        if (blueHealthColorInput) {
+            blueHealthColorInput.addEventListener('input', function() {
+                if (isValidHexColor(this.value)) {
+                    blueHealthColor = this.value;
+                    blueParticles.options.color = this.value;
+                }
+            });
+        }
         
         // Initialize health bars with default colors
         updateHealthBar(redHealthBar, redSquareHealth, 4, redHealthColor);
