@@ -323,6 +323,7 @@
         let mediaRecorder = null;
         let recordedChunks = [];
         let isRecording = false;
+        let originalUpdate = null; // To store the original update function
         
         // Health bar elements
         const redHealthBar = document.getElementById('redHealthBar');
@@ -570,8 +571,35 @@
             try {
                 recordedChunks = [];
                 
-                // Create a stream from the canvas
-                const stream = canvas.captureStream(120); // 120 FPS
+                // Create an off-screen canvas that's 25px larger on each side
+                const recordingCanvas = document.createElement('canvas');
+                recordingCanvas.width = canvas.width + 50; // 25px on each side
+                recordingCanvas.height = canvas.height + 50; // 25px on each side
+                const recordingCtx = recordingCanvas.getContext('2d');
+                
+                // Function to copy main canvas to recording canvas with border
+                function copyToRecordingCanvas() {
+                    // Clear the recording canvas with background color
+                    recordingCtx.fillStyle = canvasBackgroundColor;
+                    recordingCtx.fillRect(0, 0, recordingCanvas.width, recordingCanvas.height);
+                    
+                    // Draw the main canvas centered in the recording canvas (25px offset)
+                    recordingCtx.drawImage(canvas, 25, 25);
+                }
+                
+                // Store the original update function
+                originalUpdate = update;
+                
+                // Override the main animation loop to also update recording canvas
+                update = function() {
+                    originalUpdate();
+                    if (isRecording) {
+                        copyToRecordingCanvas();
+                    }
+                };
+                
+                // Create stream from the recording canvas
+                const stream = recordingCanvas.captureStream(120);
                 
                 // Set up MediaRecorder with high quality settings
                 const options = {
@@ -598,6 +626,9 @@
                 };
                 
                 mediaRecorder.onstop = () => {
+                    // Restore original update function
+                    update = originalUpdate;
+                    
                     const blob = new Blob(recordedChunks, { type: 'video/webm' });
                     const url = URL.createObjectURL(blob);
                     
@@ -1167,4 +1198,4 @@
         updateHealthBar(blueHealthBar, blueSquareHealth, 4, blueHealthColor);
     </script>
 </body>
-    </html>
+</html>
