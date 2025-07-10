@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Bouncing Squares with Glowing Frame</title>
+    <title>Bouncing Squares with Shrinking Frame</title>
     <style>
         body {
             display: flex;
@@ -198,7 +198,7 @@
             text-align: center;
             margin-top: 5px;
         }
-        .frame-controls {
+        .frame-color-control {
             display: flex;
             align-items: center;
             gap: 10px;
@@ -260,13 +260,13 @@
             <button id="toggleSoundBtn" class="sound-btn">Sound: ON</button>
         </div>
         
-        <!-- Frame Controls -->
-        <div class="frame-controls">
-            <label for="frameColor">Frame Color:</label>
-            <input type="text" id="frameColor" class="color-input" value="#00ff00" placeholder="#RRGGBB">
+        <!-- Frame Color Control -->
+        <div class="frame-color-control">
+            <label for="frameColorText">Collision Frame Color:</label>
+            <input type="text" id="frameColorText" class="color-input" value="#00ff00" placeholder="#RRGGBB">
             <input type="color" id="frameColorPicker" class="color-picker-input" value="#00ff00">
+            <button id="applyFrameBtn">Apply</button>
             <button id="resetFrameBtn">Reset Frame</button>
-            <span id="frameSizeInfo">Frame Size: 25px</span>
         </div>
         
         <div class="controls">
@@ -323,10 +323,10 @@
         const restoreBackgroundBtn = document.getElementById('restoreBackgroundBtn');
         
         // Frame controls
-        const frameColorInput = document.getElementById('frameColor');
+        const frameColorText = document.getElementById('frameColorText');
         const frameColorPicker = document.getElementById('frameColorPicker');
+        const applyFrameBtn = document.getElementById('applyFrameBtn');
         const resetFrameBtn = document.getElementById('resetFrameBtn');
-        const frameSizeInfo = document.getElementById('frameSizeInfo');
         
         // Screen Recorder Elements
         const startRecordBtn = document.getElementById('startRecordBtn');
@@ -351,10 +351,15 @@
         let originalUpdate = null;
         
         // Frame variables
-        let frameSize = 25;
+        let frameBounds = {
+            left: 0,
+            right: canvas.width,
+            top: 0,
+            bottom: canvas.height
+        };
         let frameColor = "#00ff00";
-        let frameShrinkCount = 0;
-        const MAX_FRAME_SHRINK = 200; // Maximum shrink amount (20px total)
+        let frameThickness = 8;
+        const MIN_FRAME_SIZE = 100; // Minimum width/height before frame stops shrinking
         
         // Health bar elements
         const redHealthBar = document.getElementById('redHealthBar');
@@ -573,48 +578,73 @@
         function applyFrameColor(color) {
             if (isValidHexColor(color)) {
                 frameColor = color;
-                frameColorInput.value = color;
+                frameColorText.value = color;
                 frameColorPicker.value = color;
             }
         }
         
         function resetFrame() {
-            frameSize = 25;
-            frameShrinkCount = 0;
-            updateFrameSizeInfo();
+            frameBounds = {
+                left: 0,
+                right: canvas.width,
+                top: 0,
+                bottom: canvas.height
+            };
         }
         
-        function updateFrameSizeInfo() {
-            frameSizeInfo.textContent = `Frame Size: ${frameSize.toFixed(1)}px`;
-        }
-        
-        function drawFrame(ctx, offsetX = 0, offsetY = 0) {
-            const effectiveFrameSize = frameSize - (frameShrinkCount * 0.1);
-            if (effectiveFrameSize <= 0) return;
+        function shrinkFrame() {
+            // Shrink all boundaries inward by 0.1px
+            frameBounds.left += 0.1;
+            frameBounds.right -= 0.1;
+            frameBounds.top += 0.1;
+            frameBounds.bottom -= 0.1;
             
+            // Ensure minimum frame size
+            if (frameBounds.right - frameBounds.left < MIN_FRAME_SIZE) {
+                const center = (frameBounds.left + frameBounds.right) / 2;
+                frameBounds.left = center - MIN_FRAME_SIZE / 2;
+                frameBounds.right = center + MIN_FRAME_SIZE / 2;
+            }
+            
+            if (frameBounds.bottom - frameBounds.top < MIN_FRAME_SIZE) {
+                const center = (frameBounds.top + frameBounds.bottom) / 2;
+                frameBounds.top = center - MIN_FRAME_SIZE / 2;
+                frameBounds.bottom = center + MIN_FRAME_SIZE / 2;
+            }
+        }
+        
+        function drawCollisionFrame() {
+            // Save current context state
             ctx.save();
             
-            // Outer glow effect
-            const gradient = ctx.createRadialGradient(
-                canvas.width/2 + offsetX, canvas.height/2 + offsetY, 0,
-                canvas.width/2 + offsetX, canvas.height/2 + offsetY, effectiveFrameSize * 2
-            );
-            gradient.addColorStop(0, frameColor);
-            gradient.addColorStop(1, 'transparent');
-            
+            // Set up glow effect
             ctx.shadowColor = frameColor;
             ctx.shadowBlur = 15;
-            ctx.lineWidth = effectiveFrameSize;
-            ctx.strokeStyle = gradient;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
             
-            // Draw the frame rectangle
+            // Draw the frame borders
+            ctx.strokeStyle = frameColor;
+            ctx.lineWidth = frameThickness;
+            
+            // Draw frame rectangle
             ctx.strokeRect(
-                offsetX + effectiveFrameSize/2, 
-                offsetY + effectiveFrameSize/2, 
-                canvas.width - effectiveFrameSize, 
-                canvas.height - effectiveFrameSize
+                frameBounds.left, 
+                frameBounds.top, 
+                frameBounds.right - frameBounds.left, 
+                frameBounds.bottom - frameBounds.top
             );
             
+            // Draw inner glow effect
+            ctx.shadowBlur = 8;
+            ctx.strokeRect(
+                frameBounds.left, 
+                frameBounds.top, 
+                frameBounds.right - frameBounds.left, 
+                frameBounds.bottom - frameBounds.top
+            );
+            
+            // Restore context state
             ctx.restore();
         }
         
@@ -640,12 +670,18 @@
         });
         
         // Frame color controls
-        frameColorInput.addEventListener('input', function() {
-            applyFrameColor(this.value);
+        applyFrameBtn.addEventListener('click', function() {
+            applyFrameColor(frameColorText.value);
         });
         
         frameColorPicker.addEventListener('input', function() {
             applyFrameColor(this.value);
+        });
+        
+        frameColorText.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                applyFrameColor(this.value);
+            }
         });
         
         resetFrameBtn.addEventListener('click', resetFrame);
@@ -655,28 +691,23 @@
             try {
                 recordedChunks = [];
                 
-                // Create an off-screen canvas that's larger to accommodate the frame
-                const framePadding = Math.max(frameSize, 25) * 2;
+                // Create an off-screen canvas that matches the visible canvas size
                 const recordingCanvas = document.createElement('canvas');
-                recordingCanvas.width = canvas.width + framePadding;
-                recordingCanvas.height = canvas.height + framePadding;
+                recordingCanvas.width = canvas.width;
+                recordingCanvas.height = canvas.height;
                 const recordingCtx = recordingCanvas.getContext('2d');
                 
-                // Function to copy main canvas to recording canvas with frame
+                // Function to copy main canvas to recording canvas
                 function copyToRecordingCanvas() {
                     // Clear the recording canvas with background color
                     recordingCtx.fillStyle = canvasBackgroundColor;
                     recordingCtx.fillRect(0, 0, recordingCanvas.width, recordingCanvas.height);
                     
-                    // Calculate offset to center the canvas in the recording canvas
-                    const offsetX = (recordingCanvas.width - canvas.width) / 2;
-                    const offsetY = (recordingCanvas.height - canvas.height) / 2;
+                    // Draw the frame
+                    drawCollisionFrame.call({ ctx: recordingCtx });
                     
-                    // Draw the frame first
-                    drawFrame(recordingCtx, offsetX, offsetY);
-                    
-                    // Draw the main canvas centered in the recording canvas
-                    recordingCtx.drawImage(canvas, offsetX, offsetY);
+                    // Draw the main canvas content
+                    recordingCtx.drawImage(canvas, 0, 0);
                 }
                 
                 // Store the original update function
@@ -906,17 +937,6 @@
                    square1.y + square1.size > square2.y;
         }
 
-        // Function to check collision with frame
-        function checkFrameCollision(square) {
-            const effectiveFrameSize = frameSize - (frameShrinkCount * 0.1);
-            if (effectiveFrameSize <= 0) return false;
-            
-            return (square.x <= effectiveFrameSize ||
-                    square.x + square.size >= canvas.width - effectiveFrameSize ||
-                    square.y <= effectiveFrameSize ||
-                    square.y + square.size >= canvas.height - effectiveFrameSize);
-        }
-
         // Determine which side of square2 was hit by square1
         function getCollisionSide(square1, square2) {
             const center1 = { x: square1.x + square1.size / 2, y: square1.y + square1.size / 2 };
@@ -1094,10 +1114,8 @@
             ctx.fillStyle = canvasBackgroundColor;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            // Draw the frame (only visible in recording)
-            if (!isRecording) {
-                drawFrame(ctx);
-            }
+            // Draw the collision frame (visible in both gameplay and recordings)
+            drawCollisionFrame();
             
             // Update and draw power-ups
             for (let i = powerUps.length - 1; i >= 0; i--) {
@@ -1148,23 +1166,16 @@
                 square.x += square.vx * speedMultiplier;
                 square.y += square.vy * speedMultiplier;
                 
-                // Check collision with frame
-                const frameCollision = checkFrameCollision(square);
-                if (frameCollision && frameShrinkCount < MAX_FRAME_SHRINK) {
-                    frameShrinkCount++;
-                    updateFrameSizeInfo();
-                }
-                
-                // Check boundary collision (with frame)
-                const effectiveFrameSize = frameSize - (frameShrinkCount * 0.1);
-                const frameBoundary = effectiveFrameSize > 0 ? effectiveFrameSize : 0;
-                
-                if (square.x <= frameBoundary || square.x + square.size >= canvas.width - frameBoundary) {
+                // Check collision with frame boundaries
+                if (square.x <= frameBounds.left || square.x + square.size >= frameBounds.right) {
                     // Reflect horizontally
                     square.vx *= -1;
                     
                     // Play sound
                     playSquareSound(square);
+                    
+                    // Shrink frame when square hits boundary
+                    shrinkFrame();
                     
                     // Update direction
                     if (square.direction === 0) square.direction = 1;
@@ -1172,19 +1183,20 @@
                     else if (square.direction === 2) square.direction = 3;
                     else if (square.direction === 3) square.direction = 2;
                     
-                    // Keep inside bounds
-                    if (square.x <= frameBoundary) square.x = frameBoundary;
-                    if (square.x + square.size >= canvas.width - frameBoundary) {
-                        square.x = canvas.width - frameBoundary - square.size;
-                    }
+                    // Keep inside frame bounds
+                    if (square.x <= frameBounds.left) square.x = frameBounds.left;
+                    if (square.x + square.size >= frameBounds.right) square.x = frameBounds.right - square.size;
                 }
                 
-                if (square.y <= frameBoundary || square.y + square.size >= canvas.height - frameBoundary) {
+                if (square.y <= frameBounds.top || square.y + square.size >= frameBounds.bottom) {
                     // Reflect vertically
                     square.vy *= -1;
                     
                     // Play sound
                     playSquareSound(square);
+                    
+                    // Shrink frame when square hits boundary
+                    shrinkFrame();
                     
                     // Update direction
                     if (square.direction === 0) square.direction = 3;
@@ -1192,11 +1204,9 @@
                     else if (square.direction === 2) square.direction = 1;
                     else if (square.direction === 3) square.direction = 0;
                     
-                    // Keep inside bounds
-                    if (square.y <= frameBoundary) square.y = frameBoundary;
-                    if (square.y + square.size >= canvas.height - frameBoundary) {
-                        square.y = canvas.height - frameBoundary - square.size;
-                    }
+                    // Keep inside frame bounds
+                    if (square.y <= frameBounds.top) square.y = frameBounds.top;
+                    if (square.y + square.size >= frameBounds.bottom) square.y = frameBounds.bottom - square.size;
                 }
                 
                 // Draw the square with its image
@@ -1255,13 +1265,18 @@
             isPaused = false;
             pauseBtn.textContent = 'Pause';
             
+            // Reset health
             redSquareHealth = 4;
             blueSquareHealth = 4;
             
+            // Reset frame
+            resetFrame();
+            
+            // Clear particles
             redParticles.clear();
             blueParticles.clear();
             
-            resetFrame();
+            // Spawn knife immediately on reset
             spawnKnifePowerUp();
         });
 
@@ -1310,7 +1325,6 @@
         // Initialize health bars with default colors
         updateHealthBar(redHealthBar, redSquareHealth, 4, redHealthColor);
         updateHealthBar(blueHealthBar, blueSquareHealth, 4, blueHealthColor);
-        updateFrameSizeInfo();
     </script>
 </body>
-    </html>
+</html>
