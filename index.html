@@ -215,8 +215,8 @@
         <div id="canvas-wrapper">
             <div class="health-bars">
                 <div class="health-bar">
-                    <div class="health-bar-label"></div>
-                    <div class="health-bar-container" id="redHealthBar">
+                    <div class="health-bar-label">Blue Square</div>
+                    <div class="health-bar-container" id="blueHealthBar">
                         <div class="health-segment"></div>
                         <div class="health-segment"></div>
                         <div class="health-segment"></div>
@@ -224,8 +224,8 @@
                     </div>
                 </div>
                 <div class="health-bar">
-                    <div class="health-bar-label"></div>
-                    <div class="health-bar-container" id="blueHealthBar">
+                    <div class="health-bar-label">Red Square</div>
+                    <div class="health-bar-container" id="redHealthBar">
                         <div class="health-segment"></div>
                         <div class="health-segment"></div>
                         <div class="health-segment"></div>
@@ -272,7 +272,7 @@
         <div class="controls">
             <button id="resetBtn">Reset</button>
             <button id="pauseBtn">Pause</button>
-            <button id="speedBtn">Increase Speed</button>
+            <button id="speedBtn">Speed: 1x</button>
         </div>
         <div class="health-color-controls">
             <div class="health-color-group">
@@ -423,30 +423,62 @@
         const THORN_DURATION = 7000;
         const POWER_UP_SIZE = 60;
         
+        // Track if all images are loaded
+        let imagesLoaded = false;
+        let imagesToLoad = 4;
+        
+        function checkImagesLoaded() {
+            imagesToLoad--;
+            if (imagesToLoad <= 0) {
+                imagesLoaded = true;
+                console.log("All images loaded");
+            }
+        }
+        
+        redSquareImg.onload = checkImagesLoaded;
+        blueSquareImg.onload = checkImagesLoaded;
+        knifeImg.onload = checkImagesLoaded;
+        healImg.onload = checkImagesLoaded;
+        
         // Initialize audio system
         function initializeAudio() {
             try {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                audioDestination = audioContext.createMediaStreamDestination();
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    audioDestination = audioContext.createMediaStreamDestination();
+                    
+                    // Connect each audio element to the destination
+                    Object.keys(sounds).forEach(key => {
+                        const audioElement = sounds[key];
+                        const source = audioContext.createMediaElementSource(audioElement);
+                        source.connect(audioDestination);
+                        source.connect(audioContext.destination); // Also play through speakers
+                        audioSources[key] = source;
+                    });
+                    
+                    console.log("Audio system initialized");
+                }
                 
-                // Connect each audio element to the destination
-                Object.keys(sounds).forEach(key => {
-                    const audioElement = sounds[key];
-                    const source = audioContext.createMediaElementSource(audioElement);
-                    source.connect(audioDestination);
-                    source.connect(audioContext.destination); // Also play through speakers
-                    audioSources[key] = source;
-                });
-                
-                console.log("Audio system initialized");
+                // Resume if suspended
+                if (audioContext.state === 'suspended') {
+                    return audioContext.resume().then(() => {
+                        console.log("Audio context resumed");
+                        return true;
+                    }).catch(error => {
+                        console.error("Error resuming audio context:", error);
+                        return false;
+                    });
+                }
+                return Promise.resolve(true);
             } catch (error) {
                 console.error("Error initializing audio:", error);
+                return Promise.resolve(false);
             }
         }
         
         // Power-up spawn functions
         function spawnKnifePowerUp() {
-            if (knifeImgLoaded) {
+            if (knifeImgLoaded && imagesLoaded) {
                 const pos = getRandomPosition();
                 powerUps.push({
                     x: pos.x,
@@ -459,7 +491,7 @@
         }
         
         function spawnHealPowerUp() {
-            if (healImgLoaded) {
+            if (healImgLoaded && imagesLoaded) {
                 const pos = getRandomPosition();
                 powerUps.push({
                     x: pos.x,
@@ -472,19 +504,29 @@
         }
         
         // Sound functions
-        function playSound(soundName) {
+        async function playSound(soundName) {
             if (!soundEnabled) return;
             
-            const sound = sounds[soundName];
-            if (sound) {
-                sound.currentTime = 0;
-                sound.play().catch(error => {
-                    console.log("Sound play error:", error);
-                });
+            try {
+                // Ensure audio is initialized and resumed
+                if (!audioContext) {
+                    const success = await initializeAudio();
+                    if (!success) return;
+                }
+                
+                const sound = sounds[soundName];
+                if (sound) {
+                    sound.currentTime = 0;
+                    await sound.play().catch(error => {
+                        console.log("Sound play error:", error);
+                    });
+                }
+            } catch (error) {
+                console.error("Error playing sound:", error);
             }
         }
         
-        function playSquareSound(square) {
+        async function playSquareSound(square) {
             if (!soundEnabled) return;
             
             const now = Date.now();
@@ -493,7 +535,7 @@
             square.lastPlayTime = now;
             
             const soundName = square.isBlue ? 'blue' : 'red';
-            playSound(soundName);
+            await playSound(soundName);
         }
         
         // Toggle sound button
@@ -666,23 +708,17 @@
         }
         
         function shrinkFrame() {
-            // Shrink all boundaries inward by 0.2px
-            frameBounds.left += 0.2;
-            frameBounds.right -= 0.2;
-            frameBounds.top += 0.2;
-            frameBounds.bottom -= 0.2;
+            const newLeft = frameBounds.left + 0.2;
+            const newRight = frameBounds.right - 0.2;
+            const newTop = frameBounds.top + 0.2;
+            const newBottom = frameBounds.bottom - 0.2;
             
-            // Ensure minimum frame size
-            if (frameBounds.right - frameBounds.left < MIN_FRAME_SIZE) {
-                const center = (frameBounds.left + frameBounds.right) / 2;
-                frameBounds.left = center - MIN_FRAME_SIZE / 2;
-                frameBounds.right = center + MIN_FRAME_SIZE / 2;
-            }
-            
-            if (frameBounds.bottom - frameBounds.top < MIN_FRAME_SIZE) {
-                const center = (frameBounds.top + frameBounds.bottom) / 2;
-                frameBounds.top = center - MIN_FRAME_SIZE / 2;
-                frameBounds.bottom = center + MIN_FRAME_SIZE / 2;
+            // Ensure minimum size
+            if (newRight - newLeft >= MIN_FRAME_SIZE && newBottom - newTop >= MIN_FRAME_SIZE) {
+                frameBounds.left = newLeft;
+                frameBounds.right = newRight;
+                frameBounds.top = newTop;
+                frameBounds.bottom = newBottom;
             }
         }
         
@@ -772,12 +808,11 @@
             try {
                 // Initialize audio if not already done
                 if (!audioContext) {
-                    initializeAudio();
-                }
-                
-                // Resume audio context if suspended
-                if (audioContext.state === 'suspended') {
-                    await audioContext.resume();
+                    const success = await initializeAudio();
+                    if (!success) {
+                        alert("Could not initialize audio. Please interact with the page first.");
+                        return;
+                    }
                 }
                 
                 recordedChunks = [];
@@ -908,10 +943,6 @@
         
         // Event listeners for recording controls
         startRecordBtn.addEventListener('click', async function() {
-            // First user interaction will initialize audio
-            if (!audioContext) {
-                initializeAudio();
-            }
             startRecording();
         });
         
@@ -1021,8 +1052,26 @@
             }
         }
 
+        // Function to separate squares after collision
+        function separateSquares(square1, square2) {
+            const dx = (square2.x + square2.size/2) - (square1.x + square1.size/2);
+            const dy = (square2.y + square2.size/2) - (square1.y + square1.size/2);
+            const distance = Math.sqrt(dx*dx + dy*dy);
+            
+            if (distance < (square1.size + square2.size)/2) {
+                const pushDistance = ((square1.size + square2.size)/2 - distance) / 2;
+                const pushX = (dx / distance) * pushDistance;
+                const pushY = (dy / distance) * pushDistance;
+                
+                square1.x -= pushX;
+                square1.y -= pushY;
+                square2.x += pushX;
+                square2.y += pushY;
+            }
+        }
+
         // Function to handle collision between two squares with reflective physics
-        function handleCollision(square1, square2) {
+        async function handleCollision(square1, square2) {
             const side1 = getCollisionSide(square1, square2);
             const side2 = getCollisionSide(square2, square1);
             
@@ -1062,37 +1111,12 @@
                 }
             }
             
-            const center1 = { x: square1.x + square1.size / 2, y: square1.y + square1.size / 2 };
-            const center2 = { x: square2.x + square2.size / 2, y: square2.y + square2.size / 2 };
-            
-            const dx = center2.x - center1.x;
-            const dy = center2.y - center1.y;
-            
-            const overlapX = (square1.size + square2.size) / 2 - Math.abs(dx);
-            if (Math.abs(dx) > 0) {
-                if (dx > 0) {
-                    square1.x -= overlapX / 4;
-                    square2.x += overlapX / 4;
-                } else {
-                    square1.x += overlapX / 4;
-                    square2.x -= overlapX / 4;
-                }
-            }
-            
-            const overlapY = (square1.size + square2.size) / 2 - Math.abs(dy);
-            if (Math.abs(dy) > 0) {
-                if (dy > 0) {
-                    square1.y -= overlapY / 4;
-                    square2.y += overlapY / 4;
-                } else {
-                    square1.y += overlapY / 4;
-                    square2.y -= overlapY / 4;
-                }
-            }
+            // Separate squares to prevent sticking
+            separateSquares(square1, square2);
             
             // Play collision sound for both squares
-            playSquareSound(square1);
-            playSquareSound(square2);
+            await playSquareSound(square1);
+            await playSquareSound(square2);
             
             // Check if damage should be dealt
             let damageDealt = false;
@@ -1103,13 +1127,13 @@
                 squares.forEach(sq => sq.hasThorns = false);
                 damageDealt = true;
                 damagedSquare = square2;
-                playSound('hit');
+                await playSound('hit');
             } else if (square2.hasThorns && !square1.hasThorns) {
                 square1.size = Math.max(0, square1.size - 30);
                 squares.forEach(sq => sq.hasThorns = false);
                 damageDealt = true;
                 damagedSquare = square1;
-                playSound('hit');
+                await playSound('hit');
             }
             
             // Create particle effect if damage was dealt
@@ -1215,12 +1239,10 @@
                             square.thornExpiryTime = currentTime + THORN_DURATION;
                             
                             playSound('knife');
-                            setTimeout(spawnKnifePowerUp, KNIFE_SPAWN_INTERVAL);
                         } else if (powerUp.type === 'heal') {
                             square.size = Math.min(120, square.size + 30);
                             
                             playSound('heal');
-                            setTimeout(spawnHealPowerUp, HEAL_SPAWN_INTERVAL);
                         }
                         
                         powerUpCollected = true;
@@ -1336,12 +1358,24 @@
             requestAnimationFrame(animate);
         }
 
-        // Start the animation
-        animate();
-        
-        // Spawn knife immediately, heal after delay
-        spawnKnifePowerUp();
-        setTimeout(spawnHealPowerUp, HEAL_SPAWN_INTERVAL);
+        // Start the animation when all images are loaded
+        function startGame() {
+            if (imagesLoaded) {
+                animate();
+                // Set up power-up spawning
+                setInterval(spawnKnifePowerUp, KNIFE_SPAWN_INTERVAL);
+                setInterval(spawnHealPowerUp, HEAL_SPAWN_INTERVAL);
+            } else {
+                setTimeout(startGame, 100);
+            }
+        }
+
+        // Initialize health bars with default colors
+        updateHealthBar(redHealthBar, redSquareHealth, 4, redHealthColor);
+        updateHealthBar(blueHealthBar, blueSquareHealth, 4, blueHealthColor);
+
+        // Start the game
+        startGame();
         
         // Event listeners for buttons
         resetBtn.addEventListener('click', function() {
@@ -1351,6 +1385,7 @@
             ];
             powerUps = [];
             speedMultiplier = 1;
+            speedBtn.textContent = 'Speed: 1x';
             isPaused = false;
             pauseBtn.textContent = 'Pause';
             
@@ -1364,9 +1399,6 @@
             // Clear particles
             redParticles.clear();
             blueParticles.clear();
-            
-            // Spawn knife immediately on reset
-            spawnKnifePowerUp();
         });
 
         pauseBtn.addEventListener('click', function() {
@@ -1376,6 +1408,7 @@
 
         speedBtn.addEventListener('click', function() {
             speedMultiplier = (speedMultiplier >= 3) ? 1 : speedMultiplier + 0.5;
+            this.textContent = `Speed: ${speedMultiplier}x`;
         });
         
         // Color input validation function
@@ -1410,10 +1443,6 @@
                 blueParticles.options.color = this.value;
             }
         });
-        
-        // Initialize health bars with default colors
-        updateHealthBar(redHealthBar, redSquareHealth, 4, redHealthColor);
-        updateHealthBar(blueHealthBar, blueSquareHealth, 4, blueHealthColor);
     </script>
 </body>
 </html>
