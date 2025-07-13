@@ -310,6 +310,7 @@
         let audioContext = null;
         let audioDestination = null;
         let audioSources = {};
+        let audioInitialized = false;
         
         // Buttons
         const resetBtn = document.getElementById('resetBtn');
@@ -392,26 +393,26 @@
         // Speed constant
         const SPEED = 6;
         
+        // Image loading tracking
+        let loadedImages = 0;
+        const totalImages = 4;
+        
         // Image objects with loading event listeners
         const redSquareImg = new Image();
         redSquareImg.src = "red.png";
         let redSquareImgLoaded = true;
-        redSquareImg.onerror = () => { redSquareImgLoaded = false; console.log("Red square image failed to load"); };
         
         const blueSquareImg = new Image();
         blueSquareImg.src = "blue.png";
         let blueSquareImgLoaded = true;
-        blueSquareImg.onerror = () => { blueSquareImgLoaded = false; console.log("Blue square image failed to load"); };
         
         const knifeImg = new Image();
         knifeImg.src = "knife.png";
         let knifeImgLoaded = true;
-        knifeImg.onerror = () => { knifeImgLoaded = false; console.log("Knife image failed to load"); };
         
         const healImg = new Image();
         healImg.src = "heal.png";
         let healImgLoaded = true;
-        healImg.onerror = () => { healImgLoaded = false; console.log("Heal image failed to load"); };
         
         // Fallback colors for squares
         const RED_SQUARE_COLOR = '#e74c3c';
@@ -423,26 +424,16 @@
         const THORN_DURATION = 7000;
         const POWER_UP_SIZE = 60;
         
-        // Track if all images are loaded
-        let imagesLoaded = false;
-        let imagesToLoad = 4;
-        
-        function checkImagesLoaded() {
-            imagesToLoad--;
-            if (imagesToLoad <= 0) {
-                imagesLoaded = true;
-                console.log("All images loaded");
-            }
-        }
-        
-        redSquareImg.onload = checkImagesLoaded;
-        blueSquareImg.onload = checkImagesLoaded;
-        knifeImg.onload = checkImagesLoaded;
-        healImg.onload = checkImagesLoaded;
+        // Power-up spawn intervals
+        let knifeSpawnInterval = null;
+        let healSpawnInterval = null;
         
         // Initialize audio system
-        function initializeAudio() {
+        async function initializeAudio() {
+            if (audioInitialized) return true;
+            
             try {
+                // Audio context requires user interaction
                 if (!audioContext) {
                     audioContext = new (window.AudioContext || window.webkitAudioContext)();
                     audioDestination = audioContext.createMediaStreamDestination();
@@ -455,30 +446,31 @@
                         source.connect(audioContext.destination); // Also play through speakers
                         audioSources[key] = source;
                     });
-                    
-                    console.log("Audio system initialized");
                 }
                 
-                // Resume if suspended
                 if (audioContext.state === 'suspended') {
-                    return audioContext.resume().then(() => {
-                        console.log("Audio context resumed");
-                        return true;
-                    }).catch(error => {
-                        console.error("Error resuming audio context:", error);
-                        return false;
-                    });
+                    await audioContext.resume();
                 }
-                return Promise.resolve(true);
+                
+                audioInitialized = true;
+                return true;
             } catch (error) {
-                console.error("Error initializing audio:", error);
-                return Promise.resolve(false);
+                console.error("Audio initialization failed:", error);
+                return false;
             }
         }
         
+        // Initialize audio on first user interaction
+        document.addEventListener('click', async function initAudioOnClick() {
+            const success = await initializeAudio();
+            if (success) {
+                document.removeEventListener('click', initAudioOnClick);
+            }
+        }, { once: true });
+        
         // Power-up spawn functions
         function spawnKnifePowerUp() {
-            if (knifeImgLoaded && imagesLoaded) {
+            if (knifeImgLoaded && loadedImages === totalImages) {
                 const pos = getRandomPosition();
                 powerUps.push({
                     x: pos.x,
@@ -491,7 +483,7 @@
         }
         
         function spawnHealPowerUp() {
-            if (healImgLoaded && imagesLoaded) {
+            if (healImgLoaded && loadedImages === totalImages) {
                 const pos = getRandomPosition();
                 powerUps.push({
                     x: pos.x,
@@ -509,7 +501,7 @@
             
             try {
                 // Ensure audio is initialized and resumed
-                if (!audioContext) {
+                if (!audioInitialized) {
                     const success = await initializeAudio();
                     if (!success) return;
                 }
@@ -566,14 +558,16 @@
                 this.life -= this.decay;
                 this.size *= 0.995;
                 
-                if (this.y + this.size > this.canvasHeight) {
-                    this.y = this.canvasHeight - this.size;
+                // Proper bounds checking
+                if (this.y + this.size > canvas.height) {
+                    this.y = canvas.height - this.size;
                     this.speedY *= -this.bounce;
                     this.speedX *= 0.9;
                 }
                 
-                if (this.x + this.size > this.canvasWidth || this.x - this.size < 0) {
+                if (this.x + this.size > canvas.width || this.x - this.size < 0) {
                     this.speedX *= -this.bounce;
+                    this.x = Math.max(this.size, Math.min(canvas.width - this.size, this.x));
                 }
                 
                 return this.life > 0 && this.size > 0.1;
@@ -590,11 +584,6 @@
                 ctx.fill();
                 ctx.restore();
             }
-            
-            setBounds(width, height) {
-                this.canvasWidth = width;
-                this.canvasHeight = height;
-            }
         }
 
         class ParticleSystem {
@@ -609,28 +598,17 @@
                     autoFade: false,
                     ...options
                 };
-                
-                this.updateBounds();
-            }
-            
-            updateBounds() {
-                this.width = this.canvas.width;
-                this.height = this.canvas.height;
             }
             
             createExplosion(x, y, count = this.options.particleCount) {
                 for (let i = 0; i < count; i++) {
                     const particle = new Particle(x, y, this.options.color);
-                    particle.setBounds(this.width, this.height);
                     this.particles.push(particle);
                 }
             }
             
             update() {
-                this.particles = this.particles.filter(particle => {
-                    particle.setBounds(this.width, this.height);
-                    return particle.update();
-                });
+                this.particles = this.particles.filter(particle => particle.update());
             }
             
             draw() {
@@ -638,17 +616,12 @@
             }
             
             animate() {
-                this.updateBounds();
                 this.update();
                 this.draw();
             }
             
             clear() {
                 this.particles = [];
-            }
-            
-            getParticleCount() {
-                return this.particles.length;
             }
         }
 
@@ -669,8 +642,6 @@
             for (let i = 0; i < 50; i++) {
                 const randomColor = colors[Math.floor(Math.random() * colors.length)];
                 const particle = new Particle(x, y, randomColor);
-                particle.setBounds(canvas.width, canvas.height);
-                // Add to both particle systems for maximum effect
                 redParticles.particles.push(particle);
                 blueParticles.particles.push(particle);
             }
@@ -679,6 +650,10 @@
         }
         
         // Background color control functions
+        function isValidHexColor(color) {
+            return /^#([0-9A-F]{3}|[0-9A-F]{6})$/i.test(color);
+        }
+        
         function applyBackgroundColor(color) {
             if (isValidHexColor(color)) {
                 oldBackgroundColor = canvasBackgroundColor;
@@ -686,6 +661,8 @@
                 canvas.style.backgroundColor = color;
                 backgroundColorText.value = color;
                 backgroundColorPicker.value = color;
+            } else {
+                alert("Invalid hex color format. Use #RRGGBB or #RGB");
             }
         }
         
@@ -695,6 +672,8 @@
                 frameColor = color;
                 frameColorText.value = color;
                 frameColorPicker.value = color;
+            } else {
+                alert("Invalid hex color format. Use #RRGGBB or #RGB");
             }
         }
         
@@ -708,10 +687,11 @@
         }
         
         function shrinkFrame() {
-            const newLeft = frameBounds.left + 0.2;
-            const newRight = frameBounds.right - 0.2;
-            const newTop = frameBounds.top + 0.2;
-            const newBottom = frameBounds.bottom - 0.2;
+            const shrinkAmount = 0.5; // Increased shrink amount for visible effect
+            const newLeft = frameBounds.left + shrinkAmount;
+            const newRight = frameBounds.right - shrinkAmount;
+            const newTop = frameBounds.top + shrinkAmount;
+            const newBottom = frameBounds.bottom - shrinkAmount;
             
             // Ensure minimum size
             if (newRight - newLeft >= MIN_FRAME_SIZE && newBottom - newTop >= MIN_FRAME_SIZE) {
@@ -807,7 +787,7 @@
         async function startRecording() {
             try {
                 // Initialize audio if not already done
-                if (!audioContext) {
+                if (!audioInitialized) {
                     const success = await initializeAudio();
                     if (!success) {
                         alert("Could not initialize audio. Please interact with the page first.");
@@ -825,25 +805,11 @@
                 
                 // Function to copy main canvas to recording canvas
                 function copyToRecordingCanvas() {
-                    // Clear the recording canvas with background color
+                    // Clear with background color
                     recordingCtx.fillStyle = canvasBackgroundColor;
                     recordingCtx.fillRect(0, 0, recordingCanvas.width, recordingCanvas.height);
                     
-                    // Draw the frame directly on the recording context
-                    recordingCtx.save();
-                    recordingCtx.shadowColor = frameColor;
-                    recordingCtx.shadowBlur = 8;
-                    recordingCtx.strokeStyle = frameColor;
-                    recordingCtx.lineWidth = frameThickness;
-                    recordingCtx.strokeRect(
-                        frameBounds.left, 
-                        frameBounds.top, 
-                        frameBounds.right - frameBounds.left, 
-                        frameBounds.bottom - frameBounds.top
-                    );
-                    recordingCtx.restore();
-                    
-                    // Draw the main canvas content
+                    // Copy the main canvas directly instead of redrawing
                     recordingCtx.drawImage(canvas, 0, 0);
                 }
                 
@@ -871,17 +837,21 @@
                 ]);
                 
                 // Set up MediaRecorder with high quality settings
-                const options = {
-                    mimeType: 'video/webm;codecs=vp9',
-                    videoBitsPerSecond: 8000000
-                };
-                
-                if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-                    options.mimeType = 'video/webm;codecs=vp8';
-                }
-                
-                if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-                    options.mimeType = 'video/webm';
+                let options = { videoBitsPerSecond: 8000000 };
+
+                // Try different formats in order of preference
+                const formats = [
+                    'video/webm;codecs=vp9',
+                    'video/webm;codecs=vp8', 
+                    'video/webm',
+                    'video/mp4'
+                ];
+
+                for (const format of formats) {
+                    if (MediaRecorder.isTypeSupported(format)) {
+                        options.mimeType = format;
+                        break;
+                    }
                 }
                 
                 mediaRecorder = new MediaRecorder(combinedStream, options);
@@ -963,11 +933,11 @@
         // Function to calculate health based on square size
         function calculateHealth(size) {
             if (size <= 0) return 0;
-            if (size >= 120) return 4;
-            if (size >= 90) return 3;
-            if (size >= 60) return 2;
-            if (size >= 30) return 1;
-            return 0;
+            if (size >= 120) return 4;  // Full health
+            if (size >= 90) return 3;   // 3/4 health
+            if (size >= 60) return 2;   // 1/2 health
+            if (size >= 30) return 1;   // 1/4 health
+            return 0;                   // Dead
         }
         
         // Create squares with 45° angles only
@@ -1358,27 +1328,64 @@
             requestAnimationFrame(animate);
         }
 
-        // Start the animation when all images are loaded
+        // Image loading handler
+        function imageLoaded() {
+            loadedImages++;
+            if (loadedImages === totalImages) {
+                console.log("All images loaded, starting game");
+                startGame();
+            }
+        }
+
+        // Set up image loading
+        redSquareImg.onload = imageLoaded;
+        redSquareImg.onerror = () => { 
+            redSquareImgLoaded = false; 
+            console.log("Red square image failed to load");
+            imageLoaded(); 
+        };
+        
+        blueSquareImg.onload = imageLoaded;
+        blueSquareImg.onerror = () => { 
+            blueSquareImgLoaded = false; 
+            console.log("Blue square image failed to load");
+            imageLoaded(); 
+        };
+        
+        knifeImg.onload = imageLoaded;
+        knifeImg.onerror = () => { 
+            knifeImgLoaded = false; 
+            console.log("Knife image failed to load");
+            imageLoaded(); 
+        };
+        
+        healImg.onload = imageLoaded;
+        healImg.onerror = () => { 
+            healImgLoaded = false; 
+            console.log("Heal image failed to load");
+            imageLoaded(); 
+        };
+
+        // Start the game when all images are loaded
         function startGame() {
-            if (imagesLoaded) {
+            if (loadedImages === totalImages) {
                 animate();
                 // Set up power-up spawning
-                setInterval(spawnKnifePowerUp, KNIFE_SPAWN_INTERVAL);
-                setInterval(spawnHealPowerUp, HEAL_SPAWN_INTERVAL);
-            } else {
-                setTimeout(startGame, 100);
+                knifeSpawnInterval = setInterval(spawnKnifePowerUp, KNIFE_SPAWN_INTERVAL);
+                healSpawnInterval = setInterval(spawnHealPowerUp, HEAL_SPAWN_INTERVAL);
             }
         }
 
         // Initialize health bars with default colors
         updateHealthBar(redHealthBar, redSquareHealth, 4, redHealthColor);
         updateHealthBar(blueHealthBar, blueSquareHealth, 4, blueHealthColor);
-
-        // Start the game
-        startGame();
         
         // Event listeners for buttons
         resetBtn.addEventListener('click', function() {
+            // Clear existing intervals
+            if (knifeSpawnInterval) clearInterval(knifeSpawnInterval);
+            if (healSpawnInterval) clearInterval(healSpawnInterval);
+            
             squares = [
                 createSquare(100, 150, 0, '#3498db', 'blue.png', true),
                 createSquare(500, 400, 2, '#e74c3c', 'red.png', false)
@@ -1399,6 +1406,10 @@
             // Clear particles
             redParticles.clear();
             blueParticles.clear();
+            
+            // Restart power-up spawning
+            knifeSpawnInterval = setInterval(spawnKnifePowerUp, KNIFE_SPAWN_INTERVAL);
+            healSpawnInterval = setInterval(spawnHealPowerUp, HEAL_SPAWN_INTERVAL);
         });
 
         pauseBtn.addEventListener('click', function() {
@@ -1410,11 +1421,6 @@
             speedMultiplier = (speedMultiplier >= 3) ? 1 : speedMultiplier + 0.5;
             this.textContent = `Speed: ${speedMultiplier}x`;
         });
-        
-        // Color input validation function
-        function isValidHexColor(color) {
-            return /^#[0-9A-F]{6}$/i.test(color);
-        }
         
         // Thorn color input event listeners
         redThornColorInput.addEventListener('input', function() {
