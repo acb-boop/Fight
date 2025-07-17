@@ -1270,7 +1270,9 @@
                 const square = squares[i];
                 
                 // Skip if square is "dead" (size 0)
-                if (square.size <= 0) continue;
+                if (square.size <= 0) {
+                    continue;
+                }
                 
                 // Check if thorns effect has expired
                 if (square.hasThorns && currentTime > square.thornExpiryTime) {
@@ -1352,10 +1354,10 @@
             updateHealthBar(redHealthBar, redSquareHealth, 6, redHealthColor);
             updateHealthBar(blueHealthBar, blueSquareHealth, 6, blueHealthColor);
             
-            // Check collision between squares
-            if (squares[0].size > 0 && squares[1].size > 0 && checkCollision(squares[0], squares[1])) {
-                handleCollision(squares[0], squares[1]);
-            }
+            // Check collision between squares (only if both are alive)
+                if (squares[0].size > 0 && squares[1].size > 0 && checkCollision(squares[0], squares[1])) {
+                    handleCollision(squares[0], squares[1]);
+                }
             
             // Update and draw particles
             redParticles.animate();
