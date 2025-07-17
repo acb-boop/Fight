@@ -506,6 +506,10 @@
                     if (!success) return;
                 }
                 
+                if (audioContext && audioContext.state === 'suspended') {
+                    await audioContext.resume();
+                }
+                
                 const sound = sounds[soundName];
                 if (sound) {
                     sound.currentTime = 0;
@@ -801,6 +805,8 @@
                 const recordingCanvas = document.createElement('canvas');
                 recordingCanvas.width = canvas.width;
                 recordingCanvas.height = canvas.height;
+                recordingCanvas.style.width = canvas.style.width;
+                recordingCanvas.style.height = canvas.style.height;
                 const recordingCtx = recordingCanvas.getContext('2d');
                 
                 // Function to copy main canvas to recording canvas
@@ -1089,78 +1095,54 @@
             await playSquareSound(square2);
             
             // Check if damage should be dealt
-            let damageDealt = false;
-            let damagedSquare = null;
-
             if (square1.hasThorns && !square2.hasThorns) {
-                const currentSize = square2.size;
-                const newSize = square2.size - 30;
-    
-            // Check if square is already at minimum size (30) and will die
-            if (currentSize <= 30) {
-                square2.size = 0; // Make it disappear
-                squares.forEach(sq => sq.hasThorns = false);
-                damageDealt = true;
-                damagedSquare = square2;
-                await playSound('hit');
-        
-                const centerX = square2.x + square2.size / 2;
-                const centerY = square2.y + square2.size / 2;
-        
-                // Multi-colored explosion when square dies
-                createMultiColorExplosion(centerX, centerY);
-            } else {
-                // Square takes damage but doesn't die
-                square2.size = Math.max(30, newSize);
-                squares.forEach(sq => sq.hasThorns = false);
-                damageDealt = true;
-                damagedSquare = square2;
-                await playSound('hit');
-        
-                const centerX = square2.x + square2.size / 2;
-                const centerY = square2.y + square2.size / 2;
-        
-                // Particles in health bar color when damaged but not dead
-                if (square2.isBlue) {
-                    blueParticles.createExplosion(centerX, centerY);
+                const newSize = Math.max(30, square2.size - 30);
+                
+                if (square2.size <= 30) {
+                    // Square dies
+                    square2.size = 0;
+                    const centerX = square2.x + square2.size / 2;
+                    const centerY = square2.y + square2.size / 2;
+                    createMultiColorExplosion(centerX, centerY);
                 } else {
-                    redParticles.createExplosion(centerX, centerY);
+                    // Square takes damage
+                    square2.size = newSize;
+                    const centerX = square2.x + square2.size / 2;
+                    const centerY = square2.y + square2.size / 2;
+                    
+                    if (square2.isBlue) {
+                        blueParticles.createExplosion(centerX, centerY);
+                    } else {
+                        redParticles.createExplosion(centerX, centerY);
+                    }
                 }
-            }
-        } else if (square2.hasThorns && !square1.hasThorns) {
-            const currentSize = square1.size;
-            const newSize = square1.size - 30;
-    
-            // Check if square is already at minimum size (30) and will die
-            if (currentSize <= 30) {
-                square1.size = 0; // Make it disappear
+                
                 squares.forEach(sq => sq.hasThorns = false);
-                damageDealt = true;
-                damagedSquare = square1;
                 await playSound('hit');
-        
-                const centerX = square1.x + square1.size / 2;
-                const centerY = square1.y + square1.size / 2;
-        
-                // Multi-colored explosion when square dies
-                createMultiColorExplosion(centerX, centerY);
-            } else {
-                // Square takes damage but doesn't die
-                square1.size = Math.max(30, newSize);
-                squares.forEach(sq => sq.hasThorns = false);
-                damageDealt = true;
-                damagedSquare = square1;
-                await playSound('hit');
-        
-                const centerX = square1.x + square1.size / 2;
-                const centerY = square1.y + square1.size / 2;
-        
-                // Particles in health bar color when damaged but not dead
-                if (square1.isBlue) {
-                    blueParticles.createExplosion(centerX, centerY);
+            } else if (square2.hasThorns && !square1.hasThorns) {
+                const newSize = Math.max(30, square1.size - 30);
+                
+                if (square1.size <= 30) {
+                    // Square dies
+                    square1.size = 0;
+                    const centerX = square1.x + square1.size / 2;
+                    const centerY = square1.y + square1.size / 2;
+                    createMultiColorExplosion(centerX, centerY);
                 } else {
-                    redParticles.createExplosion(centerX, centerY);
+                    // Square takes damage
+                    square1.size = newSize;
+                    const centerX = square1.x + square1.size / 2;
+                    const centerY = square1.y + square1.size / 2;
+                    
+                    if (square1.isBlue) {
+                        blueParticles.createExplosion(centerX, centerY);
+                    } else {
+                        redParticles.createExplosion(centerX, centerY);
+                    }
                 }
+                
+                squares.forEach(sq => sq.hasThorns = false);
+                await playSound('hit');
             }
         }
         
@@ -1355,9 +1337,9 @@
             updateHealthBar(blueHealthBar, blueSquareHealth, 6, blueHealthColor);
             
             // Check collision between squares (only if both are alive)
-                if (squares[0].size > 0 && squares[1].size > 0 && checkCollision(squares[0], squares[1])) {
-                    handleCollision(squares[0], squares[1]);
-                }
+            if (squares[0].size > 0 && squares[1].size > 0 && checkCollision(squares[0], squares[1])) {
+                handleCollision(squares[0], squares[1]);
+            }
             
             // Update and draw particles
             redParticles.animate();
@@ -1408,14 +1390,20 @@
             imageLoaded(); 
         };
 
+        // Add timeout for image loading
+        setTimeout(() => {
+            if (loadedImages < totalImages) {
+                console.log("Some images failed to load, starting anyway");
+                startGame();
+            }
+        }, 3000);
+
         // Start the game when all images are loaded
         function startGame() {
-            if (loadedImages === totalImages) {
-                animate();
-                // Set up power-up spawning
-                knifeSpawnInterval = setInterval(spawnKnifePowerUp, KNIFE_SPAWN_INTERVAL);
-                healSpawnInterval = setInterval(spawnHealPowerUp, HEAL_SPAWN_INTERVAL);
-            }
+            animate();
+            // Set up power-up spawning
+            knifeSpawnInterval = setInterval(spawnKnifePowerUp, KNIFE_SPAWN_INTERVAL);
+            healSpawnInterval = setInterval(spawnHealPowerUp, HEAL_SPAWN_INTERVAL);
         }
 
         // Initialize health bars with default colors
