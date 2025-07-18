@@ -386,6 +386,8 @@
         // Health tracking
         let redSquareHealth = 4;
         let blueSquareHealth = 4;
+        let lastRedHealth = -1;
+        let lastBlueHealth = -1;
         
         // Default square properties
         const DEFAULT_SQUARE_SIZE = 120;
@@ -396,23 +398,23 @@
         // Image loading tracking
         let loadedImages = 0;
         const totalImages = 4;
+        let redImageReady = false;
+        let blueImageReady = false;
+        let knifeImageReady = false;
+        let healImageReady = false;
         
         // Image objects with loading event listeners
         const redSquareImg = new Image();
         redSquareImg.src = "red.png";
-        let redSquareImgLoaded = true;
         
         const blueSquareImg = new Image();
         blueSquareImg.src = "blue.png";
-        let blueSquareImgLoaded = true;
         
         const knifeImg = new Image();
         knifeImg.src = "knife.png";
-        let knifeImgLoaded = true;
         
         const healImg = new Image();
         healImg.src = "heal.png";
-        let healImgLoaded = true;
         
         // Fallback colors for squares
         const RED_SQUARE_COLOR = '#e74c3c';
@@ -470,7 +472,7 @@
         
         // Power-up spawn functions
         function spawnKnifePowerUp() {
-            if (knifeImgLoaded && loadedImages === totalImages) {
+            if (knifeImageReady) {
                 const pos = getRandomPosition();
                 powerUps.push({
                     x: pos.x,
@@ -483,7 +485,7 @@
         }
         
         function spawnHealPowerUp() {
-            if (healImgLoaded && loadedImages === totalImages) {
+            if (healImageReady) {
                 const pos = getRandomPosition();
                 powerUps.push({
                     x: pos.x,
@@ -620,8 +622,10 @@
             }
             
             animate() {
-                this.update();
-                this.draw();
+                if (this.particles.length > 0) {
+                    this.update();
+                    this.draw();
+                }
             }
             
             clear() {
@@ -1200,9 +1204,12 @@
             
             const currentTime = Date.now();
             
-            // Clear canvas with the selected background color
-            ctx.fillStyle = canvasBackgroundColor;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            // Optimized canvas clearing
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (canvasBackgroundColor !== '#ffffff') {
+                ctx.fillStyle = canvasBackgroundColor;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
             
             // Draw the collision frame (visible in both gameplay and recordings)
             drawCollisionFrame();
@@ -1211,8 +1218,10 @@
             for (let i = powerUps.length - 1; i >= 0; i--) {
                 const powerUp = powerUps[i];
                 
-                if (powerUp.img.complete && powerUp.img.naturalWidth > 0) {
-                    ctx.drawImage(powerUp.img, powerUp.x, powerUp.y, powerUp.size, powerUp.size);
+                if (powerUp.type === 'knife' && knifeImageReady) {
+                    ctx.drawImage(knifeImg, powerUp.x, powerUp.y, powerUp.size, powerUp.size);
+                } else if (powerUp.type === 'heal' && healImageReady) {
+                    ctx.drawImage(healImg, powerUp.x, powerUp.y, powerUp.size, powerUp.size);
                 } else {
                     // Fallback for power-up images
                     ctx.fillStyle = powerUp.type === 'knife' ? '#333' : '#2ecc71';
@@ -1309,8 +1318,10 @@
                 }
                 
                 // Draw the square with its image or fallback color
-                if (square.img.complete && square.img.naturalWidth > 0) {
-                    ctx.drawImage(square.img, square.x, square.y, square.size, square.size);
+                if (square.isBlue && blueImageReady) {
+                    ctx.drawImage(blueSquareImg, square.x, square.y, square.size, square.size);
+                } else if (!square.isBlue && redImageReady) {
+                    ctx.drawImage(redSquareImg, square.x, square.y, square.size, square.size);
                 } else {
                     // Fallback to colored rectangles
                     ctx.fillStyle = square.isBlue ? BLUE_SQUARE_COLOR : RED_SQUARE_COLOR;
@@ -1329,16 +1340,28 @@
             }
             
             // Update health based on square sizes
-            redSquareHealth = calculateHealth(squares[1].size);
-            blueSquareHealth = calculateHealth(squares[0].size);
+            const newRedHealth = calculateHealth(squares[1].size);
+            const newBlueHealth = calculateHealth(squares[0].size);
             
-            // Update health bar displays
-            updateHealthBar(redHealthBar, redSquareHealth, 6, redHealthColor);
-            updateHealthBar(blueHealthBar, blueSquareHealth, 6, blueHealthColor);
+            // Only update health bars when they actually change
+            if (newRedHealth !== lastRedHealth) {
+                updateHealthBar(redHealthBar, newRedHealth, 4, redHealthColor);
+                lastRedHealth = newRedHealth;
+            }
+            if (newBlueHealth !== lastBlueHealth) {
+                updateHealthBar(blueHealthBar, newBlueHealth, 4, blueHealthColor);
+                lastBlueHealth = newBlueHealth;
+            }
             
-            // Check collision between squares (only if both are alive)
-            if (squares[0].size > 0 && squares[1].size > 0 && checkCollision(squares[0], squares[1])) {
-                handleCollision(squares[0], squares[1]);
+            // Check collision between squares (only if both are alive and close enough)
+            if (squares[0].size > 0 && squares[1].size > 0) {
+                const dx = Math.abs(squares[0].x - squares[1].x);
+                const dy = Math.abs(squares[0].y - squares[1].y);
+                const maxDistance = squares[0].size + squares[1].size;
+                
+                if (dx < maxDistance && dy < maxDistance && checkCollision(squares[0], squares[1])) {
+                    handleCollision(squares[0], squares[1]);
+                }
             }
             
             // Update and draw particles
@@ -1362,30 +1385,38 @@
         }
 
         // Set up image loading
-        redSquareImg.onload = imageLoaded;
+        redSquareImg.onload = () => { 
+            redImageReady = true; 
+            imageLoaded(); 
+        };
         redSquareImg.onerror = () => { 
-            redSquareImgLoaded = false; 
             console.log("Red square image failed to load");
             imageLoaded(); 
         };
         
-        blueSquareImg.onload = imageLoaded;
+        blueSquareImg.onload = () => { 
+            blueImageReady = true; 
+            imageLoaded(); 
+        };
         blueSquareImg.onerror = () => { 
-            blueSquareImgLoaded = false; 
             console.log("Blue square image failed to load");
             imageLoaded(); 
         };
         
-        knifeImg.onload = imageLoaded;
+        knifeImg.onload = () => { 
+            knifeImageReady = true; 
+            imageLoaded(); 
+        };
         knifeImg.onerror = () => { 
-            knifeImgLoaded = false; 
             console.log("Knife image failed to load");
             imageLoaded(); 
         };
         
-        healImg.onload = imageLoaded;
+        healImg.onload = () => { 
+            healImageReady = true; 
+            imageLoaded(); 
+        };
         healImg.onerror = () => { 
-            healImgLoaded = false; 
             console.log("Heal image failed to load");
             imageLoaded(); 
         };
@@ -1429,6 +1460,8 @@
             // Reset health
             redSquareHealth = 4;
             blueSquareHealth = 4;
+            lastRedHealth = -1;
+            lastBlueHealth = -1;
             
             // Reset frame
             resetFrame();
