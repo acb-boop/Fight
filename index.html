@@ -246,7 +246,7 @@
             <button id="stopRecordBtn" class="stop-btn" disabled>Stop Recording</button>
             <button id="downloadBtn" class="download-btn" disabled>Download Video</button>
             <div class="recorder-info">
-                Records at 480fps in 1080p resolution with audio
+                Records at 120fps in 1080p resolution with audio
             </div>
         </div>
         
@@ -792,133 +792,95 @@
         }
         
         // Screen Recording Functions with Audio
-        async function startRecording() {
-            try {
-                // Initialize audio if not already done
-                if (!audioInitialized) {
-                    const success = await initializeAudio();
-                    if (!success) {
-                        alert("Could not initialize audio. Please interact with the page first.");
-                        return;
-                    }
-                }
-                
-                recordedChunks = [];
-                
-                // Create an off-screen canvas that matches the visible canvas size
-                const recordingCanvas = document.createElement('canvas');
-                recordingCanvas.width = canvas.width;
-                recordingCanvas.height = canvas.height;
-                recordingCanvas.style.width = canvas.style.width;
-                recordingCanvas.style.height = canvas.style.height;
-                const recordingCtx = recordingCanvas.getContext('2d');
-                
-                // Function to copy main canvas to recording canvas
-                function copyToRecordingCanvas() {
-                    // Clear with background color
-                    recordingCtx.fillStyle = canvasBackgroundColor;
-                    recordingCtx.fillRect(0, 0, recordingCanvas.width, recordingCanvas.height);
-                    
-                    // Copy the main canvas directly instead of redrawing
-                    recordingCtx.drawImage(canvas, 0, 0);
-                }
-                
-                // Store the original update function
-                originalUpdate = update;
-                
-                // Override the main animation loop to also update recording canvas
-                update = function() {
-                    originalUpdate();
-                    if (isRecording) {
-                        copyToRecordingCanvas();
-                    }
-                };
-                
-                // Get canvas stream
-                const canvasStream = recordingCanvas.captureStream(480);
-                
-                // Get audio stream
-                const audioStream = audioDestination.stream;
-                
-                // Combine video and audio tracks
-                const combinedStream = new MediaStream([
-                    ...canvasStream.getVideoTracks(),
-                    ...audioStream.getAudioTracks()
-                ]);
-                
-                // Set up MediaRecorder with high quality settings
-                let options = { videoBitsPerSecond: 8000000 };
-
-                // Try different formats in order of preference
-                const formats = [
-                    'video/webm;codecs=vp9',
-                    'video/webm;codecs=vp8', 
-                    'video/webm',
-                    'video/mp4'
-                ];
-
-                for (const format of formats) {
-                    if (MediaRecorder.isTypeSupported(format)) {
-                        options.mimeType = format;
-                        break;
-                    }
-                }
-                
-                mediaRecorder = new MediaRecorder(combinedStream, options);
-                
-                mediaRecorder.ondataavailable = (event) => {
-                    if (event.data.size > 0) {
-                        recordedChunks.push(event.data);
-                    }
-                };
-                
-                mediaRecorder.onstop = () => {
-                    // Restore original update function
-                    update = originalUpdate;
-                    
-                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
-                    const url = URL.createObjectURL(blob);
-                    
-                    downloadBtn.disabled = false;
-                    downloadBtn.onclick = () => {
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = `bouncing-squares-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.webm`;
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                    };
-                    
-                    recordingStatus.textContent = 'Recording Complete - Ready to Download';
-                    recordingIndicator.classList.remove('active');
-                };
-                
-                // Start recording
-                mediaRecorder.start(100); // Collect data every 100ms
-                isRecording = true;
-                
-                // Update UI
-                startRecordBtn.disabled = true;
-                stopRecordBtn.disabled = false;
-                downloadBtn.disabled = true;
-                recordingStatus.textContent = 'Recording...';
-                recordingIndicator.classList.add('active');
-                
-            } catch (error) {
-                console.error('Error starting recording:', error);
-                alert('Error starting recording. Please make sure your browser supports canvas recording with audio.');
+        
+// Screen Recording Functions (Fixed, smooth video + audio)
+async function startRecording() {
+    try {
+        // Initialize audio if necessary
+        if (!audioInitialized) {
+            const success = await initializeAudio();
+            if (!success) {
+                alert("Could not initialize audio. Please interact with the page first.");
+                return;
             }
         }
-        
-        function stopRecording() {
-            if (mediaRecorder && isRecording) {
-                mediaRecorder.stop();
-                isRecording = false;
-                
-                startRecordBtn.disabled = false;
-                stopRecordBtn.disabled = true;
-                recordingStatus.textContent = 'Processing...';
+
+        recordedChunks = [];
+
+        // Capture the visible canvas directly
+        const canvasStream = canvas.captureStream(60); // 60 fps is enough
+
+        // Get audio tracks
+        const audioStream = audioDestination ? audioDestination.stream : new MediaStream();
+
+        // Merge video and audio into one MediaStream
+        const combinedStream = new MediaStream([
+            ...canvasStream.getVideoTracks(),
+            ...audioStream.getAudioTracks()
+        ]);
+
+        // Select best supported mimeType
+        let options = { videoBitsPerSecond: 8_000_000 };
+        for (const mime of [
+            'video/webm;codecs=vp9',
+            'video/webm;codecs=vp8',
+            'video/webm'
+        ]) {
+            if (MediaRecorder.isTypeSupported(mime)) {
+                options.mimeType = mime;
+                break;
             }
+        }
+
+        mediaRecorder = new MediaRecorder(combinedStream, options);
+
+        mediaRecorder.ondataavailable = (e) => {
+            if (e.data.size) recordedChunks.push(e.data);
+        };
+
+        mediaRecorder.onstop = () => {
+            const blob = new Blob(recordedChunks, { type: mediaRecorder.mimeType });
+            const url = URL.createObjectURL(blob);
+
+            downloadBtn.disabled = false;
+            downloadBtn.onclick = () => {
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `bouncing-squares-${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.webm`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            };
+
+            recordingStatus.textContent = 'Recording Complete - Ready to Download';
+            recordingIndicator.classList.remove('active');
+        };
+
+        mediaRecorder.start();
+        isRecording = true;
+
+        startRecordBtn.disabled = true;
+        stopRecordBtn.disabled = false;
+        downloadBtn.disabled = true;
+        recordingStatus.textContent = 'Recording...';
+        recordingIndicator.classList.add('active');
+    } catch (err) {
+        console.error('Error starting recording:', err);
+        alert('Error starting recording. Please ensure your browser supports canvas recording with audio.');
+    }
+}
+
+function stopRecording() {
+    if (mediaRecorder && isRecording) {
+        mediaRecorder.stop();
+        isRecording = false;
+
+        startRecordBtn.disabled = false;
+        stopRecordBtn.disabled = true;
+        recordingStatus.textContent = 'Processing...';
+    }
+}
+
         }
         
         // Event listeners for recording controls
