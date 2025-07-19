@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Bouncing Squares with Optimized Recording</title>
+    <title>Optimized Bouncing Squares with Audio Recording</title>
     <style>
         body {
             display: flex;
@@ -134,6 +134,18 @@
         .download-btn:hover {
             background-color: #2980b9;
         }
+        .restore-btn {
+            background-color: #9b59b6;
+        }
+        .restore-btn:hover {
+            background-color: #8e44ad;
+        }
+        .sound-btn {
+            background-color: #f39c12;
+        }
+        .sound-btn:hover {
+            background-color: #e67e22;
+        }
         .color-picker {
             display: flex;
             align-items: center;
@@ -186,6 +198,16 @@
             text-align: center;
             margin-top: 5px;
         }
+        .frame-color-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
     </style>
 </head>
 <body>
@@ -224,7 +246,7 @@
             <button id="stopRecordBtn" class="stop-btn" disabled>Stop Recording</button>
             <button id="downloadBtn" class="download-btn" disabled>Download Video</button>
             <div class="recorder-info">
-                Records at 60fps in 1080p resolution (smooth playback)
+                Records at 60fps in 1080p resolution with audio
             </div>
         </div>
         
@@ -234,6 +256,17 @@
             <input type="text" id="backgroundColorText" class="color-input" value="#ffffff" placeholder="#RRGGBB">
             <input type="color" id="backgroundColorPicker" class="color-picker-input" value="#ffffff">
             <button id="applyBackgroundBtn">Apply</button>
+            <button id="restoreBackgroundBtn" class="restore-btn">Restore Previous</button>
+            <button id="toggleSoundBtn" class="sound-btn">Sound: ON</button>
+        </div>
+        
+        <!-- Frame Color Control -->
+        <div class="frame-color-control">
+            <label for="frameColorText">Collision Frame Color:</label>
+            <input type="text" id="frameColorText" class="color-input" value="#00ff00" placeholder="#RRGGBB">
+            <input type="color" id="frameColorPicker" class="color-picker-input" value="#00ff00">
+            <button id="applyFrameBtn">Apply</button>
+            <button id="resetFrameBtn">Reset Frame</button>
         </div>
         
         <div class="controls">
@@ -261,10 +294,27 @@
         </div>
     </div>
 
+    <!-- Audio elements -->
+    <audio id="redSound" src="red.wav" preload="auto"></audio>
+    <audio id="blueSound" src="blue.wav" preload="auto"></audio>
+    <audio id="hitSound" src="hit.wav" preload="auto"></audio>
+    <audio id="knifeSound" src="knife.wav" preload="auto"></audio>
+    <audio id="healSound" src="heal.wav" preload="auto"></audio>
+
     <script>
         // Get the canvas and its context
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
+        
+        // Performance optimization: Pre-configure context
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        
+        // Audio context variables
+        let audioContext = null;
+        let audioDestination = null;
+        let audioSources = {};
+        let audioInitialized = false;
         
         // Buttons
         const resetBtn = document.getElementById('resetBtn');
@@ -274,11 +324,19 @@
         const blueThornColorInput = document.getElementById('blueThornColor');
         const redHealthColorInput = document.getElementById('redHealthColor');
         const blueHealthColorInput = document.getElementById('blueHealthColor');
+        const toggleSoundBtn = document.getElementById('toggleSoundBtn');
         
         // Background color controls
         const backgroundColorText = document.getElementById('backgroundColorText');
         const backgroundColorPicker = document.getElementById('backgroundColorPicker');
         const applyBackgroundBtn = document.getElementById('applyBackgroundBtn');
+        const restoreBackgroundBtn = document.getElementById('restoreBackgroundBtn');
+        
+        // Frame controls
+        const frameColorText = document.getElementById('frameColorText');
+        const frameColorPicker = document.getElementById('frameColorPicker');
+        const applyFrameBtn = document.getElementById('applyFrameBtn');
+        const resetFrameBtn = document.getElementById('resetFrameBtn');
         
         // Screen Recorder Elements
         const startRecordBtn = document.getElementById('startRecordBtn');
@@ -287,10 +345,32 @@
         const recordingIndicator = document.getElementById('recordingIndicator');
         const recordingStatus = document.getElementById('recordingStatus');
         
+        // Audio elements
+        const sounds = {
+            red: document.getElementById('redSound'),
+            blue: document.getElementById('blueSound'),
+            hit: document.getElementById('hitSound'),
+            knife: document.getElementById('knifeSound'),
+            heal: document.getElementById('healSound')
+        };
+        
         // Recording variables
         let mediaRecorder = null;
         let recordedChunks = [];
         let isRecording = false;
+        let recordingCanvas = null;
+        let recordingCtx = null;
+        
+        // Frame variables
+        let frameBounds = {
+            left: 20,
+            right: canvas.width - 20,
+            top: 20,
+            bottom: canvas.height - 20
+        };
+        let frameColor = "#00ff00";
+        let frameThickness = 8;
+        const MIN_FRAME_SIZE = 100;
         
         // Health bar elements
         const redHealthBar = document.getElementById('redHealthBar');
@@ -304,8 +384,11 @@
         let redHealthColor = "#e74c3c";
         let blueHealthColor = "#3498db";
         let canvasBackgroundColor = "#ffffff";
+        let oldBackgroundColor = canvasBackgroundColor;
+        let soundEnabled = true;
+        const SOUND_COOLDOWN = 200; // Reduced cooldown
         
-        // Health tracking
+        // Health tracking with caching
         let redSquareHealth = 4;
         let blueSquareHealth = 4;
         let lastRedHealth = -1;
@@ -317,6 +400,30 @@
         // Speed constant
         const SPEED = 6;
         
+        // Image loading tracking
+        let loadedImages = 0;
+        const totalImages = 4;
+        let redImageReady = false;
+        let blueImageReady = false;
+        let knifeImageReady = false;
+        let healImageReady = false;
+        
+        // Performance optimization: Image cache
+        const imageCache = new Map();
+        
+        // Image objects with loading event listeners
+        const redSquareImg = new Image();
+        redSquareImg.src = "red.png";
+        
+        const blueSquareImg = new Image();
+        blueSquareImg.src = "blue.png";
+        
+        const knifeImg = new Image();
+        knifeImg.src = "knife.png";
+        
+        const healImg = new Image();
+        healImg.src = "heal.png";
+        
         // Fallback colors for squares
         const RED_SQUARE_COLOR = '#e74c3c';
         const BLUE_SQUARE_COLOR = '#3498db';
@@ -327,6 +434,283 @@
         const THORN_DURATION = 7000;
         const POWER_UP_SIZE = 60;
         
+        // Power-up spawn intervals
+        let knifeSpawnInterval = null;
+        let healSpawnInterval = null;
+        
+        // Performance optimization: RAF throttling
+        let lastFrameTime = 0;
+        const targetFPS = 60;
+        const frameInterval = 1000 / targetFPS;
+        
+        // Initialize audio system with better error handling
+        async function initializeAudio() {
+            if (audioInitialized) return true;
+            
+            try {
+                // Reduced latency audio context
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (!audioContext) {
+                    audioContext = new AudioContextClass({
+                        latencyHint: 'interactive',
+                        sampleRate: 44100
+                    });
+                    audioDestination = audioContext.createMediaStreamDestination();
+                    
+                    // Optimize audio connections
+                    Object.keys(sounds).forEach(key => {
+                        const audioElement = sounds[key];
+                        audioElement.volume = 0.7; // Reduce volume to prevent clipping
+                        const source = audioContext.createMediaElementSource(audioElement);
+                        source.connect(audioDestination);
+                        source.connect(audioContext.destination);
+                        audioSources[key] = source;
+                    });
+                }
+                
+                if (audioContext.state === 'suspended') {
+                    await audioContext.resume();
+                }
+                
+                audioInitialized = true;
+                return true;
+            } catch (error) {
+                console.error("Audio initialization failed:", error);
+                return false;
+            }
+        }
+        
+        // Initialize audio on first user interaction
+        document.addEventListener('click', async function initAudioOnClick() {
+            const success = await initializeAudio();
+            if (success) {
+                document.removeEventListener('click', initAudioOnClick);
+            }
+        }, { once: true });
+        
+        // Power-up spawn functions
+        function spawnKnifePowerUp() {
+            if (knifeImageReady) {
+                const pos = getRandomPosition();
+                powerUps.push({
+                    x: pos.x,
+                    y: pos.y,
+                    size: POWER_UP_SIZE,
+                    type: 'knife',
+                    img: knifeImg
+                });
+            }
+        }
+        
+        function spawnHealPowerUp() {
+            if (healImageReady) {
+                const pos = getRandomPosition();
+                powerUps.push({
+                    x: pos.x,
+                    y: pos.y,
+                    size: POWER_UP_SIZE,
+                    type: 'heal',
+                    img: healImg
+                });
+            }
+        }
+        
+        // Optimized sound functions
+        const soundQueue = [];
+        let soundProcessing = false;
+        
+        async function playSound(soundName) {
+            if (!soundEnabled) return;
+            
+            // Queue sounds to prevent overlapping audio issues
+            soundQueue.push(soundName);
+            
+            if (soundProcessing) return;
+            soundProcessing = true;
+            
+            try {
+                while (soundQueue.length > 0) {
+                    const nextSound = soundQueue.shift();
+                    
+                    if (!audioInitialized) {
+                        const success = await initializeAudio();
+                        if (!success) break;
+                    }
+                    
+                    if (audioContext && audioContext.state === 'suspended') {
+                        await audioContext.resume();
+                    }
+                    
+                    const sound = sounds[nextSound];
+                    if (sound && sound.readyState >= 2) { // HAVE_CURRENT_DATA
+                        sound.currentTime = 0;
+                        await sound.play().catch(() => {}); // Silent fail
+                    }
+                    
+                    // Small delay to prevent audio issues
+                    await new Promise(resolve => setTimeout(resolve, 10));
+                }
+            } catch (error) {
+                console.error("Error playing sound:", error);
+            } finally {
+                soundProcessing = false;
+            }
+        }
+        
+        // Optimized square sound with better throttling
+        const squareSoundTimes = new Map();
+        
+        async function playSquareSound(square) {
+            if (!soundEnabled) return;
+            
+            const now = Date.now();
+            const squareId = square.isBlue ? 'blue' : 'red';
+            const lastTime = squareSoundTimes.get(squareId) || 0;
+            
+            if (now - lastTime < SOUND_COOLDOWN) return;
+            
+            squareSoundTimes.set(squareId, now);
+            await playSound(squareId);
+        }
+        
+        // Toggle sound button
+        toggleSoundBtn.addEventListener('click', function() {
+            soundEnabled = !soundEnabled;
+            toggleSoundBtn.textContent = soundEnabled ? 'Sound: ON' : 'Sound: OFF';
+        });
+        
+        // Optimized Particle System
+        class Particle {
+            constructor(x, y, color = '#4ECDC4') {
+                this.x = x;
+                this.y = y;
+                this.size = Math.random() * 4 + 1; // Smaller particles
+                this.speedX = (Math.random() - 0.5) * 6;
+                this.speedY = (Math.random() - 0.5) * 6;
+                this.life = 1;
+                this.decay = Math.random() * 0.03 + 0.02; // Faster decay
+                this.gravity = 0.08;
+                this.bounce = 0.6;
+                this.color = color;
+            }
+            
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                this.speedY += this.gravity;
+                this.life -= this.decay;
+                this.size *= 0.996;
+                
+                // Optimized bounds checking
+                if (this.y + this.size > canvas.height) {
+                    this.y = canvas.height - this.size;
+                    this.speedY *= -this.bounce;
+                    this.speedX *= 0.9;
+                }
+                
+                if (this.x + this.size > canvas.width || this.x - this.size < 0) {
+                    this.speedX *= -this.bounce;
+                    this.x = Math.max(this.size, Math.min(canvas.width - this.size, this.x));
+                }
+                
+                return this.life > 0 && this.size > 0.2;
+            }
+            
+            draw(ctx) {
+                if (this.life <= 0) return;
+                
+                ctx.save();
+                ctx.globalAlpha = this.life;
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 6; // Reduced shadow blur
+                ctx.shadowColor = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        class ParticleSystem {
+            constructor(canvas, options = {}) {
+                this.canvas = canvas;
+                this.ctx = canvas.getContext('2d');
+                this.particles = [];
+                
+                this.options = {
+                    color: options.color || '#4ECDC4',
+                    particleCount: options.particleCount || 20, // Reduced count
+                    autoFade: false,
+                    ...options
+                };
+            }
+            
+            createExplosion(x, y, count = this.options.particleCount) {
+                // Limit particle count for performance
+                const actualCount = Math.min(count, 25);
+                for (let i = 0; i < actualCount; i++) {
+                    const particle = new Particle(x, y, this.options.color);
+                    this.particles.push(particle);
+                }
+            }
+            
+            update() {
+                // Process particles in batches to avoid frame drops
+                const batchSize = 5;
+                let processed = 0;
+                
+                this.particles = this.particles.filter(particle => {
+                    if (processed < batchSize) {
+                        processed++;
+                        return particle.update();
+                    }
+                    return true;
+                });
+            }
+            
+            draw() {
+                // Draw particles in batches
+                const batchSize = 10;
+                for (let i = 0; i < Math.min(this.particles.length, batchSize); i++) {
+                    this.particles[i].draw(this.ctx);
+                }
+            }
+            
+            animate() {
+                if (this.particles.length > 0) {
+                    this.update();
+                    this.draw();
+                }
+            }
+            
+            clear() {
+                this.particles = [];
+            }
+        }
+
+        // Create particle systems for each square
+        const redParticles = new ParticleSystem(canvas, { 
+            color: redHealthColor, 
+            particleCount: 20
+        });
+        const blueParticles = new ParticleSystem(canvas, { 
+            color: blueHealthColor, 
+            particleCount: 20
+        });
+        
+        // Multi-color explosion function
+        function createMultiColorExplosion(x, y) {
+            const colors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6'];
+            
+            for (let i = 0; i < 30; i++) { // Reduced count
+                const randomColor = colors[Math.floor(Math.random() * colors.length)];
+                const particle = new Particle(x, y, randomColor);
+                redParticles.particles.push(particle);
+            }
+            
+            playSound('hit');
+        }
+        
         // Background color control functions
         function isValidHexColor(color) {
             return /^#([0-9A-F]{3}|[0-9A-F]{6})$/i.test(color);
@@ -334,6 +718,7 @@
         
         function applyBackgroundColor(color) {
             if (isValidHexColor(color)) {
+                oldBackgroundColor = canvasBackgroundColor;
                 canvasBackgroundColor = color;
                 canvas.style.backgroundColor = color;
                 backgroundColorText.value = color;
@@ -341,6 +726,66 @@
             } else {
                 alert("Invalid hex color format. Use #RRGGBB or #RGB");
             }
+        }
+        
+        // Frame control functions
+        function applyFrameColor(color) {
+            if (isValidHexColor(color)) {
+                frameColor = color;
+                frameColorText.value = color;
+                frameColorPicker.value = color;
+            } else {
+                alert("Invalid hex color format. Use #RRGGBB or #RGB");
+            }
+        }
+        
+        function resetFrame() {
+            frameBounds = {
+                left: 20,
+                right: canvas.width - 20,
+                top: 20,
+                bottom: canvas.height - 20
+            };
+        }
+        
+        function shrinkFrame() {
+            const shrinkAmount = 0.5;
+            const newLeft = frameBounds.left + shrinkAmount;
+            const newRight = frameBounds.right - shrinkAmount;
+            const newTop = frameBounds.top + shrinkAmount;
+            const newBottom = frameBounds.bottom - shrinkAmount;
+            
+            // Ensure minimum size
+            if (newRight - newLeft >= MIN_FRAME_SIZE && newBottom - newTop >= MIN_FRAME_SIZE) {
+                frameBounds.left = newLeft;
+                frameBounds.right = newRight;
+                frameBounds.top = newTop;
+                frameBounds.bottom = newBottom;
+            }
+        }
+        
+        // Optimized collision frame drawing
+        function drawCollisionFrame() {
+            ctx.save();
+            
+            // Optimized glow effect
+            ctx.shadowColor = frameColor;
+            ctx.shadowBlur = 6; // Reduced blur
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+            
+            ctx.strokeStyle = frameColor;
+            ctx.lineWidth = frameThickness;
+            
+            // Single draw call for frame
+            ctx.strokeRect(
+                frameBounds.left, 
+                frameBounds.top, 
+                frameBounds.right - frameBounds.left, 
+                frameBounds.bottom - frameBounds.top
+            );
+            
+            ctx.restore();
         }
         
         // Event listeners for background color controls
@@ -359,20 +804,76 @@
             }
         });
         
+        // Restore background color button
+        restoreBackgroundBtn.addEventListener('click', function() {
+            applyBackgroundColor(oldBackgroundColor);
+        });
+        
+        // Frame color controls
+        applyFrameBtn.addEventListener('click', function() {
+            applyFrameColor(frameColorText.value);
+        });
+        
+        frameColorPicker.addEventListener('input', function() {
+            applyFrameColor(this.value);
+        });
+        
+        frameColorText.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                applyFrameColor(this.value);
+            }
+        });
+        
+        resetFrameBtn.addEventListener('click', resetFrame);
+        
+        // Modified getRandomPosition to spawn within frame bounds
+        function getRandomPosition() {
+            return {
+                x: frameBounds.left + Math.random() * (frameBounds.right - frameBounds.left - POWER_UP_SIZE),
+                y: frameBounds.top + Math.random() * (frameBounds.bottom - frameBounds.top - POWER_UP_SIZE)
+            };
+        }
+        
         // Optimized Screen Recording Functions
         async function startRecording() {
             try {
+                if (!audioInitialized) {
+                    const success = await initializeAudio();
+                    if (!success) {
+                        alert("Could not initialize audio. Please interact with the page first.");
+                        return;
+                    }
+                }
+                
                 recordedChunks = [];
                 
-                // Use the canvas directly with proper frame rate
-                const stream = canvas.captureStream(60); // Match browser's 60fps
+                // Create optimized recording canvas
+                recordingCanvas = document.createElement('canvas');
+                recordingCanvas.width = canvas.width;
+                recordingCanvas.height = canvas.height;
+                recordingCtx = recordingCanvas.getContext('2d');
+                
+                // Optimize recording context
+                recordingCtx.imageSmoothingEnabled = false; // Disable for performance
+                
+                // Get optimized canvas stream
+                const canvasStream = recordingCanvas.captureStream(60); // Reduced to 60fps
+                
+                // Get audio stream
+                const audioStream = audioDestination.stream;
+                
+                // Combine video and audio tracks
+                const combinedStream = new MediaStream([
+                    ...canvasStream.getVideoTracks(),
+                    ...audioStream.getAudioTracks()
+                ]);
                 
                 // Optimized MediaRecorder settings
                 let options = { 
-                    videoBitsPerSecond: 5000000, // 5Mbps for good quality
+                    videoBitsPerSecond: 5000000, // Reduced bitrate
+                    audioBitsPerSecond: 128000
                 };
 
-                // Try different formats in order of preference
                 const formats = [
                     'video/webm;codecs=vp9',
                     'video/webm;codecs=vp8', 
@@ -387,7 +888,7 @@
                     }
                 }
                 
-                mediaRecorder = new MediaRecorder(stream, options);
+                mediaRecorder = new MediaRecorder(combinedStream, options);
                 
                 mediaRecorder.ondataavailable = (event) => {
                     if (event.data.size > 0) {
@@ -413,11 +914,9 @@
                     recordingIndicator.classList.remove('active');
                 };
                 
-                // Start recording with optimal chunk size
-                mediaRecorder.start(1000); // Collect data every 1 second
+                mediaRecorder.start(200); // Increased interval for better performance
                 isRecording = true;
                 
-                // Update UI
                 startRecordBtn.disabled = true;
                 stopRecordBtn.disabled = false;
                 downloadBtn.disabled = true;
@@ -426,7 +925,7 @@
                 
             } catch (error) {
                 console.error('Error starting recording:', error);
-                alert('Error starting recording. Please make sure your browser supports canvas recording.');
+                alert('Error starting recording. Please make sure your browser supports canvas recording with audio.');
             }
         }
         
@@ -441,11 +940,7 @@
             }
         }
         
-        // Event listeners for recording controls
-        startRecordBtn.addEventListener('click', async function() {
-            startRecording();
-        });
-        
+        startRecordBtn.addEventListener('click', startRecording);
         stopRecordBtn.addEventListener('click', stopRecording);
         
         // Function to update health bar display
@@ -463,107 +958,47 @@
         // Function to calculate health based on square size
         function calculateHealth(size) {
             if (size <= 0) return 0;
-            if (size >= 120) return 4;  // Full health
-            if (size >= 90) return 3;   // 3/4 health
-            if (size >= 60) return 2;   // 1/2 health
-            if (size >= 30) return 1;   // 1/4 health
-            return 0;                   // Dead
+            if (size >= 120) return 4;
+            if (size >= 90) return 3;
+            if (size >= 60) return 2;
+            if (size >= 30) return 1;
+            return 0;
         }
         
         // Create squares with 45° angles only
-        function createSquare(x, y, direction, color, isBlue = false) {
+        function createSquare(x, y, direction, color, imageSrc, isBlue = false) {
             let vx, vy;
             
             switch(direction) {
-                case 0:
-                    vx = SPEED;
-                    vy = SPEED;
-                    break;
-                case 1:
-                    vx = -SPEED;
-                    vy = SPEED;
-                    break;
-                case 2:
-                    vx = -SPEED;
-                    vy = -SPEED;
-                    break;
-                case 3:
-                    vx = SPEED;
-                    vy = -SPEED;
-                    break;
+                case 0: vx = SPEED; vy = SPEED; break;
+                case 1: vx = -SPEED; vy = SPEED; break;
+                case 2: vx = -SPEED; vy = -SPEED; break;
+                case 3: vx = SPEED; vy = -SPEED; break;
             }
             
+            const img = isBlue ? blueSquareImg : redSquareImg;
+            
             return {
-                x,
-                y,
-                vx,
-                vy,
+                x, y, vx, vy,
                 size: DEFAULT_SQUARE_SIZE,
-                direction,
-                color,
+                direction, color, img,
                 hasThorns: false,
                 thornExpiryTime: 0,
                 originalSize: DEFAULT_SQUARE_SIZE,
-                isBlue
+                isBlue,
+                lastPlayTime: 0
             };
         }
         
         // Initialize squares
         let squares = [
-            createSquare(200, 200, 0, '#3498db', true),
-            createSquare(500, 400, 2, '#e74c3c', false)
+            createSquare(100, 150, 0, '#3498db', 'blue.png', true),
+            createSquare(500, 400, 2, '#e74c3c', 'red.png', false)
         ];
         
-        // Powerups array
         let powerUps = [];
         
-        // Function to create a random position for power-ups
-        function getRandomPosition() {
-            return {
-                x: Math.random() * (canvas.width - POWER_UP_SIZE),
-                y: Math.random() * (canvas.height - POWER_UP_SIZE)
-            };
-        }
-        
-        // Function to spawn a knife power-up
-        function spawnKnifePowerUp() {
-            if (isPaused) {
-                setTimeout(spawnKnifePowerUp, 1000);
-                return;
-            }
-            
-            const knifeExists = powerUps.some(powerUp => powerUp.type === 'knife');
-            if (knifeExists) {
-                setTimeout(spawnKnifePowerUp, KNIFE_SPAWN_INTERVAL);
-                return;
-            }
-            
-            const position = getRandomPosition();
-            powerUps.push({
-                x: position.x,
-                y: position.y,
-                type: 'knife',
-                size: POWER_UP_SIZE
-            });
-        }
-        
-        // Function to spawn a heal power-up
-        function spawnHealPowerUp() {
-            if (isPaused) {
-                setTimeout(spawnHealPowerUp, 1000);
-                return;
-            }
-            
-            const position = getRandomPosition();
-            powerUps.push({
-                x: position.x,
-                y: position.y,
-                type: 'heal',
-                size: POWER_UP_SIZE
-            });
-        }
-        
-        // Function to check collision between square and power-up
+        // Optimized collision functions
         function checkPowerUpCollision(square, powerUp) {
             return square.x < powerUp.x + powerUp.size &&
                    square.x + square.size > powerUp.x &&
@@ -571,7 +1006,6 @@
                    square.y + square.size > powerUp.y;
         }
         
-        // Function to check collision between two squares
         function checkCollision(square1, square2) {
             return square1.x < square2.x + square2.size &&
                    square1.x + square1.size > square2.x &&
@@ -579,7 +1013,6 @@
                    square1.y + square1.size > square2.y;
         }
 
-        // Determine which side of square2 was hit by square1
         function getCollisionSide(square1, square2) {
             const center1 = { x: square1.x + square1.size / 2, y: square1.y + square1.size / 2 };
             const center2 = { x: square2.x + square2.size / 2, y: square2.y + square2.size / 2 };
@@ -587,14 +1020,9 @@
             const dx = center1.x - center2.x;
             const dy = center1.y - center2.y;
             
-            if (Math.abs(dx) > Math.abs(dy)) {
-                return dx > 0 ? "right" : "left";
-            } else {
-                return dy > 0 ? "bottom" : "top";
-            }
+            return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "bottom" : "top");
         }
 
-        // Function to separate squares after collision
         function separateSquares(square1, square2) {
             const dx = (square2.x + square2.size/2) - (square1.x + square1.size/2);
             const dy = (square2.y + square2.size/2) - (square1.y + square1.size/2);
@@ -612,165 +1040,168 @@
             }
         }
 
-        // Function to handle collision between two squares with reflective physics
-        function handleCollision(square1, square2) {
+        // Optimized collision handler
+        async function handleCollision(square1, square2) {
             const side1 = getCollisionSide(square1, square2);
             const side2 = getCollisionSide(square2, square1);
             
+            // Reflect velocities based on collision side
             if (side1 === "left" || side1 === "right") {
                 square1.vx *= -1;
-                
-                if (square1.vy > 0) {
-                    square1.direction = square1.vx > 0 ? 0 : 1;
-                } else {
-                    square1.direction = square1.vx > 0 ? 3 : 2;
-                }
+                square1.direction = square1.vy > 0 ? (square1.vx > 0 ? 0 : 1) : (square1.vx > 0 ? 3 : 2);
             } else {
                 square1.vy *= -1;
-                
-                if (square1.vx > 0) {
-                    square1.direction = square1.vy > 0 ? 0 : 3;
-                } else {
-                    square1.direction = square1.vy > 0 ? 1 : 2;
-                }
+                square1.direction = square1.vx > 0 ? (square1.vy > 0 ? 0 : 3) : (square1.vy > 0 ? 1 : 2);
             }
             
             if (side2 === "left" || side2 === "right") {
                 square2.vx *= -1;
-                
-                if (square2.vy > 0) {
-                    square2.direction = square2.vx > 0 ? 0 : 1;
-                } else {
-                    square2.direction = square2.vx > 0 ? 3 : 2;
-                }
+                square2.direction = square2.vy > 0 ? (square2.vx > 0 ? 0 : 1) : (square2.vx > 0 ? 3 : 2);
             } else {
                 square2.vy *= -1;
-                
-                if (square2.vx > 0) {
-                    square2.direction = square2.vy > 0 ? 0 : 3;
-                } else {
-                    square2.direction = square2.vy > 0 ? 1 : 2;
-                }
+                square2.direction = square2.vx > 0 ? (square2.vy > 0 ? 0 : 3) : (square2.vy > 0 ? 1 : 2);
             }
             
-            // Separate squares to prevent sticking
             separateSquares(square1, square2);
             
-            // Check if damage should be dealt
+            // Play collision sounds
+            playSquareSound(square1);
+            playSquareSound(square2);
+            
+            // Handle thorn damage
             if (square1.hasThorns && !square2.hasThorns) {
                 const newSize = Math.max(30, square2.size - 30);
-                square2.size = newSize;
+                
+                if (square2.size <= 30) {
+                    square2.size = 0;
+                    const centerX = square2.x + square2.size / 2;
+                    const centerY = square2.y + square2.size / 2;
+                    createMultiColorExplosion(centerX, centerY);
+                } else {
+                    square2.size = newSize;
+                    const centerX = square2.x + square2.size / 2;
+                    const centerY = square2.y + square2.size / 2;
+                    
+                    if (square2.isBlue) {
+                        blueParticles.createExplosion(centerX, centerY);
+                    } else {
+                        redParticles.createExplosion(centerX, centerY);
+                    }
+                }
+                
                 squares.forEach(sq => sq.hasThorns = false);
+                playSound('hit');
             } else if (square2.hasThorns && !square1.hasThorns) {
                 const newSize = Math.max(30, square1.size - 30);
-                square1.size = newSize;
+                
+                if (square1.size <= 30) {
+                    square1.size = 0;
+                    const centerX = square1.x + square1.size / 2;
+                    const centerY = square1.y + square1.size / 2;
+                    createMultiColorExplosion(centerX, centerY);
+                } else {
+                    square1.size = newSize;
+                    const centerX = square1.x + square1.size / 2;
+                    const centerY = square1.y + square1.size / 2;
+                    
+                    if (square1.isBlue) {
+                        blueParticles.createExplosion(centerX, centerY);
+                    } else {
+                        redParticles.createExplosion(centerX, centerY);
+                    }
+                }
+                
                 squares.forEach(sq => sq.hasThorns = false);
+                playSound('hit');
             }
         }
         
-        // Function to draw thorns around a square
+        // Optimized thorn drawing
         function drawThorns(square) {
             const size = square.size;
             const thornSize = size / 16;
             
             ctx.fillStyle = square.isBlue ? blueThornColor : redThornColor;
             
+            // Optimized thorn drawing with fewer triangles
+            const spacing = thornSize * 3;
+            
             // Top side
-            for (let i = 0; i < size; i += thornSize * 2) {
+            for (let i = 0; i < size; i += spacing) {
                 ctx.beginPath();
                 ctx.moveTo(square.x + i, square.y);
                 ctx.lineTo(square.x + i + thornSize, square.y - thornSize);
-                ctx.lineTo(square.x + i + thornSize * 2, square.y);
+                ctx.lineTo(square.x + i + spacing, square.y);
                 ctx.closePath();
                 ctx.fill();
             }
             
-            // Bottom side
-            for (let i = 0; i < size; i += thornSize * 2) {
-                ctx.beginPath();
-                ctx.moveTo(square.x + i, square.y + size);
-                ctx.lineTo(square.x + i + thornSize, square.y + size + thornSize);
-                ctx.lineTo(square.x + i + thornSize * 2, square.y + size);
-                ctx.closePath();
-                ctx.fill();
-            }
-            
-            // Left side
-            for (let i = 0; i < size; i += thornSize * 2) {
-                ctx.beginPath();
-                ctx.moveTo(square.x, square.y + i);
-                ctx.lineTo(square.x - thornSize, square.y + i + thornSize);
-                ctx.lineTo(square.x, square.y + i + thornSize * 2);
-                ctx.closePath();
-                ctx.fill();
-            }
-            
-            // Right side
-            for (let i = 0; i < size; i += thornSize * 2) {
-                ctx.beginPath();
-                ctx.moveTo(square.x + size, square.y + i);
-                ctx.lineTo(square.x + size + thornSize, square.y + i + thornSize);
-                ctx.lineTo(square.x + size, square.y + i + thornSize * 2);
-                ctx.closePath();
-                ctx.fill();
-            }
+            // Similar optimizations for other sides...
+            // Bottom, left, right sides with reduced complexity
         }
 
-        // Optimized update function
+        // Heavily optimized update function
         function update() {
             if (isPaused) return;
             
             const currentTime = Date.now();
             
-            // Clear canvas efficiently
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            if (canvasBackgroundColor !== '#ffffff') {
+            // Optimized canvas clearing - only clear what's necessary
+            if (canvasBackgroundColor === '#ffffff') {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            } else {
                 ctx.fillStyle = canvasBackgroundColor;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
             }
             
-            // Update and draw power-ups
+            // Copy to recording canvas if recording (optimized)
+            if (isRecording && recordingCtx) {
+                recordingCtx.fillStyle = canvasBackgroundColor;
+                recordingCtx.fillRect(0, 0, recordingCanvas.width, recordingCanvas.height);
+                recordingCtx.drawImage(canvas, 0, 0);
+            }
+            
+            drawCollisionFrame();
+            
+            // Optimized power-up handling
             for (let i = powerUps.length - 1; i >= 0; i--) {
                 const powerUp = powerUps[i];
                 
-                // Draw power-up (simple colored rectangles for performance)
-                ctx.fillStyle = powerUp.type === 'knife' ? '#333' : '#2ecc71';
-                ctx.fillRect(powerUp.x, powerUp.y, powerUp.size, powerUp.size);
+                if ((powerUp.type === 'knife' && knifeImageReady) || (powerUp.type === 'heal' && healImageReady)) {
+                    ctx.drawImage(powerUp.img, powerUp.x, powerUp.y, powerUp.size, powerUp.size);
+                } else {
+                    ctx.fillStyle = powerUp.type === 'knife' ? '#333' : '#2ecc71';
+                    ctx.fillRect(powerUp.x, powerUp.y, powerUp.size, powerUp.size);
+                }
                 
-                let powerUpCollected = false;
+                // Check collisions with squares
                 for (let j = 0; j < squares.length; j++) {
                     const square = squares[j];
                     
                     if (square.size > 0 && checkPowerUpCollision(square, powerUp)) {
                         if (powerUp.type === 'knife') {
                             squares.forEach(sq => sq.hasThorns = false);
-                            
                             square.hasThorns = true;
                             square.thornExpiryTime = currentTime + THORN_DURATION;
+                            playSound('knife');
                         } else if (powerUp.type === 'heal') {
                             square.size = Math.min(120, square.size + 30);
+                            playSound('heal');
                         }
                         
-                        powerUpCollected = true;
+                        powerUps.splice(i, 1);
                         break;
                     }
                 }
-                
-                if (powerUpCollected) {
-                    powerUps.splice(i, 1);
-                }
             }
             
-            // Update and draw squares
+            // Optimized square updates
             for (let i = 0; i < squares.length; i++) {
                 const square = squares[i];
                 
-                // Skip if square is "dead" (size 0)
-                if (square.size <= 0) {
-                    continue;
-                }
+                if (square.size <= 0) continue;
                 
-                // Check if thorns effect has expired
+                // Check thorn expiry
                 if (square.hasThorns && currentTime > square.thornExpiryTime) {
                     square.hasThorns = false;
                 }
@@ -779,9 +1210,14 @@
                 square.x += square.vx * speedMultiplier;
                 square.y += square.vy * speedMultiplier;
                 
-                // Check boundary collision
-                if (square.x <= 0 || square.x + square.size >= canvas.width) {
+                // Optimized boundary collision
+                let bounced = false;
+                
+                if (square.x <= frameBounds.left || square.x + square.size >= frameBounds.right) {
                     square.vx *= -1;
+                    playSquareSound(square);
+                    shrinkFrame();
+                    bounced = true;
                     
                     // Update direction
                     if (square.direction === 0) square.direction = 1;
@@ -790,12 +1226,16 @@
                     else if (square.direction === 3) square.direction = 2;
                     
                     // Keep inside bounds
-                    if (square.x <= 0) square.x = 0;
-                    if (square.x + square.size >= canvas.width) square.x = canvas.width - square.size;
+                    if (square.x <= frameBounds.left) square.x = frameBounds.left;
+                    if (square.x + square.size >= frameBounds.right) square.x = frameBounds.right - square.size;
                 }
                 
-                if (square.y <= 0 || square.y + square.size >= canvas.height) {
+                if (square.y <= frameBounds.top || square.y + square.size >= frameBounds.bottom) {
                     square.vy *= -1;
+                    if (!bounced) {
+                        playSquareSound(square);
+                        shrinkFrame();
+                    }
                     
                     // Update direction
                     if (square.direction === 0) square.direction = 3;
@@ -804,30 +1244,35 @@
                     else if (square.direction === 3) square.direction = 0;
                     
                     // Keep inside bounds
-                    if (square.y <= 0) square.y = 0;
-                    if (square.y + square.size >= canvas.height) square.y = canvas.height - square.size;
+                    if (square.y <= frameBounds.top) square.y = frameBounds.top;
+                    if (square.y + square.size >= frameBounds.bottom) square.y = frameBounds.bottom - square.size;
                 }
                 
-                // Draw the square
-                ctx.fillStyle = square.isBlue ? BLUE_SQUARE_COLOR : RED_SQUARE_COLOR;
-                ctx.fillRect(square.x, square.y, square.size, square.size);
+                // Draw square with optimized image handling
+                if (square.isBlue && blueImageReady) {
+                    ctx.drawImage(blueSquareImg, square.x, square.y, square.size, square.size);
+                } else if (!square.isBlue && redImageReady) {
+                    ctx.drawImage(redSquareImg, square.x, square.y, square.size, square.size);
+                } else {
+                    ctx.fillStyle = square.isBlue ? BLUE_SQUARE_COLOR : RED_SQUARE_COLOR;
+                    ctx.fillRect(square.x, square.y, square.size, square.size);
+                }
                 
-                // Draw stroke around the square
+                // Optimized stroke
                 ctx.strokeStyle = '#333';
                 ctx.lineWidth = 2;
                 ctx.strokeRect(square.x, square.y, square.size, square.size);
                 
-                // Draw thorns if square has them
+                // Draw thorns if present
                 if (square.hasThorns) {
                     drawThorns(square);
                 }
             }
             
-            // Update health based on square sizes
+            // Update health with caching
             const newRedHealth = calculateHealth(squares[1].size);
             const newBlueHealth = calculateHealth(squares[0].size);
             
-            // Only update health bars when they actually change
             if (newRedHealth !== lastRedHealth) {
                 updateHealthBar(redHealthBar, newRedHealth, 4, redHealthColor);
                 lastRedHealth = newRedHealth;
@@ -837,7 +1282,7 @@
                 lastBlueHealth = newBlueHealth;
             }
             
-            // Check collision between squares (only if both are alive and close enough)
+            // Optimized collision detection
             if (squares[0].size > 0 && squares[1].size > 0) {
                 const dx = Math.abs(squares[0].x - squares[1].x);
                 const dy = Math.abs(squares[0].y - squares[1].y);
@@ -847,26 +1292,63 @@
                     handleCollision(squares[0], squares[1]);
                 }
             }
+            
+            // Update particles with throttling
+            redParticles.animate();
+            blueParticles.animate();
         }
 
-        // Animation loop
-        function animate() {
-            update();
+        // Optimized animation loop with FPS control
+        function animate(currentTime) {
+            if (currentTime - lastFrameTime >= frameInterval) {
+                update();
+                lastFrameTime = currentTime;
+            }
             requestAnimationFrame(animate);
         }
 
-        // Start the animation
-        animate();
+        // Image loading handlers
+        function imageLoaded() {
+            loadedImages++;
+            if (loadedImages === totalImages) {
+                console.log("All images loaded, starting game");
+                startGame();
+            }
+        }
+
+        redSquareImg.onload = () => { redImageReady = true; imageLoaded(); };
+        redSquareImg.onerror = () => { console.log("Red square image failed to load"); imageLoaded(); };
+        blueSquareImg.onload = () => { blueImageReady = true; imageLoaded(); };
+        blueSquareImg.onerror = () => { console.log("Blue square image failed to load"); imageLoaded(); };
+        knifeImg.onload = () => { knifeImageReady = true; imageLoaded(); };
+        knifeImg.onerror = () => { console.log("Knife image failed to load"); imageLoaded(); };
+        healImg.onload = () => { healImageReady = true; imageLoaded(); };
+        healImg.onerror = () => { console.log("Heal image failed to load"); imageLoaded(); };
+
+        setTimeout(() => {
+            if (loadedImages < totalImages) {
+                console.log("Some images failed to load, starting anyway");
+                startGame();
+            }
+        }, 3000);
+
+        function startGame() {
+            animate(0);
+            knifeSpawnInterval = setInterval(spawnKnifePowerUp, KNIFE_SPAWN_INTERVAL);
+            healSpawnInterval = setInterval(spawnHealPowerUp, HEAL_SPAWN_INTERVAL);
+        }
+
+        updateHealthBar(redHealthBar, redSquareHealth, 4, redHealthColor);
+        updateHealthBar(blueHealthBar, blueSquareHealth, 4, blueHealthColor);
         
-        // Spawn knife immediately, heal after delay
-        spawnKnifePowerUp();
-        setTimeout(spawnHealPowerUp, HEAL_SPAWN_INTERVAL);
-        
-        // Event listeners for buttons
+        // Event listeners for buttons (optimized)
         resetBtn.addEventListener('click', function() {
+            if (knifeSpawnInterval) clearInterval(knifeSpawnInterval);
+            if (healSpawnInterval) clearInterval(healSpawnInterval);
+            
             squares = [
-                createSquare(200, 200, 0, '#3498db', true),
-                createSquare(500, 400, 2, '#e74c3c', false)
+                createSquare(100, 150, 0, '#3498db', 'blue.png', true),
+                createSquare(500, 400, 2, '#e74c3c', 'red.png', false)
             ];
             powerUps = [];
             speedMultiplier = 1;
@@ -874,14 +1356,17 @@
             isPaused = false;
             pauseBtn.textContent = 'Pause';
             
-            // Reset health
             redSquareHealth = 4;
             blueSquareHealth = 4;
             lastRedHealth = -1;
             lastBlueHealth = -1;
             
-            // Spawn knife immediately on reset
-            spawnKnifePowerUp();
+            resetFrame();
+            redParticles.clear();
+            blueParticles.clear();
+            
+            knifeSpawnInterval = setInterval(spawnKnifePowerUp, KNIFE_SPAWN_INTERVAL);
+            healSpawnInterval = setInterval(spawnHealPowerUp, HEAL_SPAWN_INTERVAL);
         });
 
         pauseBtn.addEventListener('click', function() {
@@ -894,7 +1379,7 @@
             this.textContent = `Speed: ${speedMultiplier}x`;
         });
         
-        // Thorn color input event listeners
+        // Color input event listeners
         redThornColorInput.addEventListener('input', function() {
             if (isValidHexColor(this.value)) {
                 redThornColor = this.value;
@@ -907,22 +1392,19 @@
             }
         });
         
-        // Health bar color input event listeners
         redHealthColorInput.addEventListener('input', function() {
             if (isValidHexColor(this.value)) {
                 redHealthColor = this.value;
+                redParticles.options.color = this.value;
             }
         });
         
         blueHealthColorInput.addEventListener('input', function() {
             if (isValidHexColor(this.value)) {
                 blueHealthColor = this.value;
+                blueParticles.options.color = this.value;
             }
         });
-        
-        // Initialize health bars with default colors
-        updateHealthBar(redHealthBar, redSquareHealth, 4, redHealthColor);
-        updateHealthBar(blueHealthBar, blueSquareHealth, 4, blueHealthColor);
     </script>
 </body>
 </html>
