@@ -63,6 +63,9 @@
             border: 2px solid #333;
             background-color: white;
         }
+        canvas:fullscreen {
+            object-fit: contain;
+        }
         .controls {
             display: flex;
             gap: 15px;
@@ -274,7 +277,8 @@
             </div>
             
             <div class="recorder-info">
-                Records in ultra-smooth 1080p with audio synchronization
+                Records in ultra-smooth 1080p with audio synchronization<br>
+                <strong>Keyboard Controls:</strong> P=Pause, R=Record, E=Stop, S=Reset, D=Download, F=Fullscreen, 1/2/3=Speed
             </div>
         </div>
         
@@ -393,6 +397,15 @@
         let recordingStream = null;
         let recordingTimeStart = 0;
         
+        // Fullscreen variables
+        let isFullscreen = false;
+        let originalCanvasSize = { width: 1080, height: 720 };
+        let originalCanvasStyle = { width: canvas.style.width, height: canvas.style.height };
+        let originalSquarePositions = [];
+        let fullscreenScale = 1;
+        let fullscreenOffsetX = 0;
+        let fullscreenOffsetY = 0;
+        
         // Frame variables
         let frameBounds = {
             left: 20,
@@ -470,6 +483,132 @@
         // Power-up spawn intervals
         let knifeSpawnInterval = null;
         let healSpawnInterval = null;
+        
+        // Fullscreen function
+        function toggleFullscreen() {
+            if (!isFullscreen) {
+                // Enter fullscreen
+                if (canvas.requestFullscreen) {
+                    canvas.requestFullscreen();
+                } else if (canvas.webkitRequestFullscreen) {
+                    canvas.webkitRequestFullscreen();
+                } else if (canvas.mozRequestFullScreen) {
+                    canvas.mozRequestFullScreen();
+                } else if (canvas.msRequestFullscreen) {
+                    canvas.msRequestFullscreen();
+                }
+            } else {
+                // Exit fullscreen
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.mozCancelFullScreen) {
+                    document.mozCancelFullScreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
+            }
+        }
+
+        // Handle fullscreen change events
+        function handleFullscreenChange() {
+            isFullscreen = !!(document.fullscreenElement || 
+                             document.webkitFullscreenElement || 
+                             document.mozFullScreenElement || 
+                             document.msFullscreenElement);
+            
+            if (isFullscreen) {
+                // Save original positions
+                originalSquarePositions = squares.map(square => ({
+                    x: square.x,
+                    y: square.y,
+                    size: square.size,
+                    vx: square.vx,
+                    vy: square.vy
+                }));
+                
+                // Set canvas to fullscreen size
+                canvas.width = window.screen.width;
+                canvas.height = window.screen.height;
+                canvas.style.width = '100vw';
+                canvas.style.height = '100vh';
+                canvas.style.objectFit = 'contain';
+                
+                // Calculate scaling
+                const scaleX = canvas.width / originalCanvasSize.width;
+                const scaleY = canvas.height / originalCanvasSize.height;
+                fullscreenScale = Math.min(scaleX, scaleY);
+                
+                // Center the game area
+                const newWidth = originalCanvasSize.width * fullscreenScale;
+                const newHeight = originalCanvasSize.height * fullscreenScale;
+                fullscreenOffsetX = (canvas.width - newWidth) / 2;
+                fullscreenOffsetY = (canvas.height - newHeight) / 2;
+                
+                // Update frame bounds
+                frameBounds = {
+                    left: fullscreenOffsetX + 20 * fullscreenScale,
+                    right: fullscreenOffsetX + newWidth - 20 * fullscreenScale,
+                    top: fullscreenOffsetY + 20 * fullscreenScale,
+                    bottom: fullscreenOffsetY + newHeight - 20 * fullscreenScale
+                };
+                
+                // Scale squares
+                squares.forEach(square => {
+                    square.x = (square.x * fullscreenScale) + fullscreenOffsetX;
+                    square.y = (square.y * fullscreenScale) + fullscreenOffsetY;
+                    square.size = square.size * fullscreenScale;
+                    square.vx = square.vx * fullscreenScale;
+                    square.vy = square.vy * fullscreenScale;
+                });
+                
+                // Scale power-ups
+                powerUps.forEach(powerUp => {
+                    powerUp.x = (powerUp.x * fullscreenScale) + fullscreenOffsetX;
+                    powerUp.y = (powerUp.y * fullscreenScale) + fullscreenOffsetY;
+                    powerUp.size = powerUp.size * fullscreenScale;
+                });
+                
+            } else {
+                // Restore original size
+                canvas.width = originalCanvasSize.width;
+                canvas.height = originalCanvasSize.height;
+                canvas.style.width = originalCanvasStyle.width;
+                canvas.style.height = originalCanvasStyle.height;
+                canvas.style.objectFit = '';
+                
+                // Reset frame bounds
+                frameBounds = {
+                    left: 20,
+                    right: canvas.width - 20,
+                    top: 20,
+                    bottom: canvas.height - 20
+                };
+                
+                // Restore squares to original positions
+                if (originalSquarePositions.length > 0) {
+                    squares.forEach((square, index) => {
+                        if (originalSquarePositions[index]) {
+                            square.x = originalSquarePositions[index].x;
+                            square.y = originalSquarePositions[index].y;
+                            square.size = originalSquarePositions[index].size;
+                            square.vx = originalSquarePositions[index].vx;
+                            square.vy = originalSquarePositions[index].vy;
+                        }
+                    });
+                }
+                
+                // Reset power-ups
+                powerUps = [];
+            }
+        }
+
+        // Add fullscreen event listeners
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+        document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+        document.addEventListener('MSFullscreenChange', handleFullscreenChange);
         
         // Initialize audio system
         async function initializeAudio() {
@@ -600,7 +739,7 @@
             targetCtx.shadowColor = frameColor;
             targetCtx.shadowBlur = 8;
             targetCtx.strokeStyle = frameColor;
-            targetCtx.lineWidth = frameThickness;
+            targetCtx.lineWidth = frameThickness * (isFullscreen ? fullscreenScale : 1);
             targetCtx.strokeRect(
                 renderState.frameBounds.left,
                 renderState.frameBounds.top,
@@ -637,7 +776,7 @@
                 
                 // Draw border
                 targetCtx.strokeStyle = '#333';
-                targetCtx.lineWidth = 2;
+                targetCtx.lineWidth = 2 * (isFullscreen ? fullscreenScale : 1);
                 targetCtx.strokeRect(square.x, square.y, square.size, square.size);
                 
                 // Draw thorns
@@ -886,7 +1025,7 @@
                 powerUps.push({
                     x: pos.x,
                     y: pos.y,
-                    size: POWER_UP_SIZE,
+                    size: POWER_UP_SIZE * (isFullscreen ? fullscreenScale : 1),
                     type: 'knife',
                     img: knifeImg
                 });
@@ -899,7 +1038,7 @@
                 powerUps.push({
                     x: pos.x,
                     y: pos.y,
-                    size: POWER_UP_SIZE,
+                    size: POWER_UP_SIZE * (isFullscreen ? fullscreenScale : 1),
                     type: 'heal',
                     img: healImg
                 });
@@ -950,7 +1089,7 @@
             toggleSoundBtn.textContent = soundEnabled ? 'Sound: ON' : 'Sound: OFF';
         });
         
-        // Particle System (same as before)
+        // Particle System
         class Particle {
             constructor(x, y, color = '#4ECDC4') {
                 this.x = x;
@@ -1063,6 +1202,7 @@
             
             playSound('hit');
         }
+        
         // Background color control functions
         function isValidHexColor(color) {
             return /^#([0-9A-F]{3}|[0-9A-F]{6})$/i.test(color);
@@ -1092,22 +1232,32 @@
         }
         
         function resetFrame() {
-            frameBounds = {
-                left: 20,
-                right: canvas.width - 20,
-                top: 20,
-                bottom: canvas.height - 20
-            };
+            if (isFullscreen) {
+                frameBounds = {
+                    left: fullscreenOffsetX + 20 * fullscreenScale,
+                    right: fullscreenOffsetX + (originalCanvasSize.width * fullscreenScale) - 20 * fullscreenScale,
+                    top: fullscreenOffsetY + 20 * fullscreenScale,
+                    bottom: fullscreenOffsetY + (originalCanvasSize.height * fullscreenScale) - 20 * fullscreenScale
+                };
+            } else {
+                frameBounds = {
+                    left: 20,
+                    right: canvas.width - 20,
+                    top: 20,
+                    bottom: canvas.height - 20
+                };
+            }
         }
         
         function shrinkFrame() {
-            const shrinkAmount = 0.5;
+            const shrinkAmount = 0.5 * (isFullscreen ? fullscreenScale : 1);
             const newLeft = frameBounds.left + shrinkAmount;
             const newRight = frameBounds.right - shrinkAmount;
             const newTop = frameBounds.top + shrinkAmount;
             const newBottom = frameBounds.bottom - shrinkAmount;
             
-            if (newRight - newLeft >= MIN_FRAME_SIZE && newBottom - newTop >= MIN_FRAME_SIZE) {
+            const minSize = MIN_FRAME_SIZE * (isFullscreen ? fullscreenScale : 1);
+            if (newRight - newLeft >= minSize && newBottom - newTop >= minSize) {
                 frameBounds.left = newLeft;
                 frameBounds.right = newRight;
                 frameBounds.top = newTop;
@@ -1122,7 +1272,7 @@
             ctx.shadowOffsetX = 0;
             ctx.shadowOffsetY = 0;
             ctx.strokeStyle = frameColor;
-            ctx.lineWidth = frameThickness;
+            ctx.lineWidth = frameThickness * (isFullscreen ? fullscreenScale : 1);
             
             ctx.strokeRect(
                 frameBounds.left, 
@@ -1180,12 +1330,76 @@
         resetFrameBtn.addEventListener('click', resetFrame);
         
         function getRandomPosition() {
+            const powerUpSize = POWER_UP_SIZE * (isFullscreen ? fullscreenScale : 1);
             return {
-                x: frameBounds.left + Math.random() * (frameBounds.right - frameBounds.left - POWER_UP_SIZE),
-                y: frameBounds.top + Math.random() * (frameBounds.bottom - frameBounds.top - POWER_UP_SIZE)
+                x: frameBounds.left + Math.random() * (frameBounds.right - frameBounds.left - powerUpSize),
+                y: frameBounds.top + Math.random() * (frameBounds.bottom - frameBounds.top - powerUpSize)
             };
         }
         
+        // Keyboard Controls
+        document.addEventListener('keydown', function(event) {
+            // Prevent default for specific keys to avoid browser shortcuts
+            const key = event.key.toLowerCase();
+            
+            switch(key) {
+                case 'p':
+                case ' ': // Spacebar
+                    event.preventDefault();
+                    pauseBtn.click();
+                    break;
+                    
+                case 'r':
+                    event.preventDefault();
+                    if (!isRecording) {
+                        startRecording();
+                    }
+                    break;
+                    
+                case 'e':
+                    event.preventDefault();
+                    if (isRecording) {
+                        stopRecording();
+                    }
+                    break;
+                    
+                case 's':
+                    event.preventDefault();
+                    resetBtn.click();
+                    break;
+                    
+                case 'd':
+                    event.preventDefault();
+                    if (!downloadBtn.disabled) {
+                        downloadBtn.click();
+                    }
+                    break;
+                    
+                case 'f':
+                    event.preventDefault();
+                    toggleFullscreen();
+                    break;
+                    
+                case '1':
+                    event.preventDefault();
+                    speedMultiplier = 1;
+                    speedBtn.textContent = 'Speed: 1x';
+                    break;
+                    
+                case '2':
+                    event.preventDefault();
+                    speedMultiplier = 2;
+                    speedBtn.textContent = 'Speed: 2x';
+                    break;
+                    
+                case '3':
+                    event.preventDefault();
+                    speedMultiplier = 3;
+                    speedBtn.textContent = 'Speed: 3x';
+                    break;
+            }
+        });
+
         // Event listeners for recording controls
         startRecordBtn.addEventListener('click', async function() {
             startRecording();
@@ -1207,11 +1421,12 @@
         
         // Function to calculate health based on square size
         function calculateHealth(size) {
+            const baseSize = DEFAULT_SQUARE_SIZE * (isFullscreen ? fullscreenScale : 1);
             if (size <= 0) return 0;
-            if (size >= 120) return 4;
-            if (size >= 90) return 3;
-            if (size >= 60) return 2;
-            if (size >= 30) return 1;
+            if (size >= baseSize) return 4;
+            if (size >= baseSize * 0.75) return 3;
+            if (size >= baseSize * 0.5) return 2;
+            if (size >= baseSize * 0.25) return 1;
             return 0;
         }
         
@@ -1219,39 +1434,42 @@
         function createSquare(x, y, direction, color, imageSrc, isBlue = false) {
             let vx, vy;
             
+            const speed = SPEED * (isFullscreen ? fullscreenScale : 1);
+            
             switch(direction) {
                 case 0:
-                    vx = SPEED;
-                    vy = SPEED;
+                    vx = speed;
+                    vy = speed;
                     break;
                 case 1:
-                    vx = -SPEED;
-                    vy = SPEED;
+                    vx = -speed;
+                    vy = speed;
                     break;
                 case 2:
-                    vx = -SPEED;
-                    vy = -SPEED;
+                    vx = -speed;
+                    vy = -speed;
                     break;
                 case 3:
-                    vx = SPEED;
-                    vy = -SPEED;
+                    vx = speed;
+                    vy = -speed;
                     break;
             }
             
             const img = isBlue ? blueSquareImg : redSquareImg;
+            const size = DEFAULT_SQUARE_SIZE * (isFullscreen ? fullscreenScale : 1);
             
             return {
                 x,
                 y,
                 vx,
                 vy,
-                size: DEFAULT_SQUARE_SIZE,
+                size: size,
                 direction,
                 color,
                 img,
                 hasThorns: false,
                 thornExpiryTime: 0,
-                originalSize: DEFAULT_SQUARE_SIZE,
+                originalSize: size,
                 isBlue,
                 lastPlayTime: 0
             };
@@ -1362,10 +1580,13 @@
             await playSquareSound(square2);
             
             // Check if damage should be dealt
+            const damageAmount = 30 * (isFullscreen ? fullscreenScale : 1);
+            const minSize = 30 * (isFullscreen ? fullscreenScale : 1);
+            
             if (square1.hasThorns && !square2.hasThorns) {
-                const newSize = Math.max(30, square2.size - 30);
+                const newSize = Math.max(minSize, square2.size - damageAmount);
                 
-                if (square2.size <= 30) {
+                if (square2.size <= minSize) {
                     square2.size = 0;
                     const centerX = square2.x + square2.size / 2;
                     const centerY = square2.y + square2.size / 2;
@@ -1385,9 +1606,9 @@
                 squares.forEach(sq => sq.hasThorns = false);
                 await playSound('hit');
             } else if (square2.hasThorns && !square1.hasThorns) {
-                const newSize = Math.max(30, square1.size - 30);
+                const newSize = Math.max(minSize, square1.size - damageAmount);
                 
-                if (square1.size <= 30) {
+                if (square1.size <= minSize) {
                     square1.size = 0;
                     const centerX = square1.x + square1.size / 2;
                     const centerY = square1.y + square1.size / 2;
@@ -1483,7 +1704,9 @@
                             
                             playSound('knife');
                         } else if (powerUp.type === 'heal') {
-                            square.size = Math.min(120, square.size + 30);
+                            const healAmount = 30 * (isFullscreen ? fullscreenScale : 1);
+                            const maxSize = DEFAULT_SQUARE_SIZE * (isFullscreen ? fullscreenScale : 1);
+                            square.size = Math.min(maxSize, square.size + healAmount);
                             
                             playSound('heal');
                         }
