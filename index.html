@@ -246,7 +246,7 @@
             <button id="stopRecordBtn" class="stop-btn" disabled>Stop Recording</button>
             <button id="downloadBtn" class="download-btn" disabled>Download Video</button>
             <div class="recorder-info">
-                Records at 120fps in 1080p resolution with audio
+                Records at 480fps in 1080p resolution with audio
             </div>
         </div>
         
@@ -835,7 +835,7 @@
                 };
                 
                 // Get canvas stream
-                const canvasStream = recordingCanvas.captureStream(240);
+                const canvasStream = recordingCanvas.captureStream(480);
                 
                 // Get audio stream
                 const audioStream = audioDestination.stream;
