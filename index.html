@@ -246,7 +246,7 @@
             <button id="stopRecordBtn" class="stop-btn" disabled>Stop Recording</button>
             <button id="downloadBtn" class="download-btn" disabled>Download Video</button>
             <div class="recorder-info">
-                Records at 30fps in 1080p resolution with audio
+                Records at 120fps in 1080p resolution with audio
             </div>
         </div>
         
@@ -354,6 +354,7 @@
         let mediaRecorder = null;
         let recordedChunks = [];
         let isRecording = false;
+        let originalUpdate = null;
         
         // Frame variables
         let frameBounds = {
@@ -790,7 +791,7 @@
             };
         }
         
-        // Optimized Screen Recording Function with Audio
+        // Screen Recording Functions with Audio
         async function startRecording() {
             try {
                 // Initialize audio if not already done
@@ -804,21 +805,51 @@
                 
                 recordedChunks = [];
                 
-                // Record main canvas directly at 30fps
-                const canvasStream = canvas.captureStream(30);
+                // Create an off-screen canvas that matches the visible canvas size
+                const recordingCanvas = document.createElement('canvas');
+                recordingCanvas.width = canvas.width;
+                recordingCanvas.height = canvas.height;
+                recordingCanvas.style.width = canvas.style.width;
+                recordingCanvas.style.height = canvas.style.height;
+                const recordingCtx = recordingCanvas.getContext('2d');
+                
+                // Function to copy main canvas to recording canvas
+                function copyToRecordingCanvas() {
+                    // Clear with background color
+                    recordingCtx.fillStyle = canvasBackgroundColor;
+                    recordingCtx.fillRect(0, 0, recordingCanvas.width, recordingCanvas.height);
+                    
+                    // Copy the main canvas directly instead of redrawing
+                    recordingCtx.drawImage(canvas, 0, 0);
+                }
+                
+                // Store the original update function
+                originalUpdate = update;
+                
+                // Override the main animation loop to also update recording canvas
+                update = function() {
+                    originalUpdate();
+                    if (isRecording) {
+                        copyToRecordingCanvas();
+                    }
+                };
+                
+                // Get canvas stream
+                const canvasStream = recordingCanvas.captureStream(240);
+                
+                // Get audio stream
                 const audioStream = audioDestination.stream;
                 
+                // Combine video and audio tracks
                 const combinedStream = new MediaStream([
                     ...canvasStream.getVideoTracks(),
                     ...audioStream.getAudioTracks()
                 ]);
                 
-                // Optimized recording settings
-                let options = { 
-                    videoBitsPerSecond: 2000000,
-                    audioBitsPerSecond: 128000
-                };
+                // Set up MediaRecorder with high quality settings
+                let options = { videoBitsPerSecond: 8000000 };
 
+                // Try different formats in order of preference
                 const formats = [
                     'video/webm;codecs=vp9',
                     'video/webm;codecs=vp8', 
@@ -842,6 +873,9 @@
                 };
                 
                 mediaRecorder.onstop = () => {
+                    // Restore original update function
+                    update = originalUpdate;
+                    
                     const blob = new Blob(recordedChunks, { type: 'video/webm' });
                     const url = URL.createObjectURL(blob);
                     
@@ -859,10 +893,11 @@
                     recordingIndicator.classList.remove('active');
                 };
                 
-                // Start with less frequent data collection
-                mediaRecorder.start(200);
+                // Start recording
+                mediaRecorder.start(100); // Collect data every 100ms
                 isRecording = true;
                 
+                // Update UI
                 startRecordBtn.disabled = true;
                 stopRecordBtn.disabled = false;
                 downloadBtn.disabled = true;
@@ -1170,9 +1205,8 @@
             const currentTime = Date.now();
             
             // Optimized canvas clearing
-            if (canvasBackgroundColor === '#ffffff') {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-            } else {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (canvasBackgroundColor !== '#ffffff') {
                 ctx.fillStyle = canvasBackgroundColor;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
             }
