@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Bouncing Squares with Ultra-Smooth Recording</title>
+    <title>Bouncing Squares Game</title>
     <style>
         body {
             display: flex;
@@ -72,37 +72,6 @@
             flex-wrap: wrap;
             justify-content: center;
         }
-        .recorder-controls {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            justify-content: center;
-            padding: 15px;
-            background-color: #e8e8e8;
-            border-radius: 8px;
-            border: 2px solid #ccc;
-        }
-        .recorder-status {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-weight: bold;
-        }
-        .recording-indicator {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background-color: #ccc;
-        }
-        .recording-indicator.active {
-            background-color: #e74c3c;
-            animation: pulse 1s infinite;
-        }
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
         button {
             padding: 8px 16px;
             background-color: #4CAF50;
@@ -119,35 +88,11 @@
             background-color: #cccccc;
             cursor: not-allowed;
         }
-        .record-btn {
-            background-color: #e74c3c;
-        }
-        .record-btn:hover {
-            background-color: #c0392b;
-        }
-        .stop-btn {
-            background-color: #34495e;
-        }
-        .stop-btn:hover {
-            background-color: #2c3e50;
-        }
-        .download-btn {
-            background-color: #3498db;
-        }
-        .download-btn:hover {
-            background-color: #2980b9;
-        }
         .restore-btn {
             background-color: #9b59b6;
         }
         .restore-btn:hover {
             background-color: #8e44ad;
-        }
-        .sound-btn {
-            background-color: #f39c12;
-        }
-        .sound-btn:hover {
-            background-color: #e67e22;
         }
         .color-picker {
             display: flex;
@@ -195,12 +140,6 @@
             padding: 0;
             cursor: pointer;
         }
-        .recorder-info {
-            font-size: 12px;
-            color: #666;
-            text-align: center;
-            margin-top: 5px;
-        }
         .frame-color-control {
             display: flex;
             align-items: center;
@@ -211,24 +150,15 @@
             border-radius: 8px;
             border: 1px solid #ddd;
         }
-        .quality-controls {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-top: 10px;
-        }
-        .quality-option {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-        .audio-test-btn {
-            background-color: #e67e22;
+        .game-info {
             font-size: 12px;
-            padding: 4px 8px;
-        }
-        .audio-test-btn:hover {
-            background-color: #d35400;
+            color: #666;
+            text-align: center;
+            margin-top: 5px;
+            padding: 10px;
+            background-color: #e8e8e8;
+            border-radius: 8px;
+            border: 2px solid #ccc;
         }
     </style>
 </head>
@@ -258,36 +188,9 @@
             <canvas id="canvas" width="1080" height="720"></canvas>
         </div>
         
-        <!-- Screen Recorder Controls -->
-        <div class="recorder-controls">
-            <div class="recorder-status">
-                <div class="recording-indicator" id="recordingIndicator"></div>
-                <span id="recordingStatus">Ready to Record</span>
-            </div>
-            <button id="startRecordBtn" class="record-btn">Start Recording</button>
-            <button id="stopRecordBtn" class="stop-btn" disabled>Stop Recording</button>
-            <button id="downloadBtn" class="download-btn" disabled>Download Video</button>
-            
-            <div class="quality-controls">
-                <label>Quality:</label>
-                <div class="quality-option">
-                    <input type="radio" id="quality60" name="quality" value="60" checked>
-                    <label for="quality60">60 FPS</label>
-                </div>
-                <div class="quality-option">
-                    <input type="radio" id="quality120" name="quality" value="120">
-                    <label for="quality120">120 FPS</label>
-                </div>
-                <div class="quality-option">
-                    <input type="radio" id="quality240" name="quality" value="240">
-                    <label for="quality240">240 FPS</label>
-                </div>
-            </div>
-            
-            <div class="recorder-info">
-                Records in ultra-smooth 1080p with audio synchronization<br>
-                <strong>Keyboard Controls:</strong> P=Pause, R=Record, E=Stop, S=Reset, D=Download, F=Fullscreen, 1/2/3=Speed
-            </div>
+        <!-- Game Info -->
+        <div class="game-info">
+            <strong>Keyboard Controls:</strong> P=Pause, S=Reset, F=Fullscreen, 1/2/3=Speed
         </div>
         
         <!-- Background Color Control -->
@@ -297,8 +200,6 @@
             <input type="color" id="backgroundColorPicker" class="color-picker-input" value="#ffffff">
             <button id="applyBackgroundBtn">Apply</button>
             <button id="restoreBackgroundBtn" class="restore-btn">Restore Previous</button>
-            <button id="toggleSoundBtn" class="sound-btn">Sound: ON</button>
-            <button id="testAudioBtn" class="audio-test-btn">Test Audio</button>
         </div>
         
         <!-- Frame Color Control -->
@@ -335,39 +236,10 @@
         </div>
     </div>
 
-    <!-- Audio elements -->
-    <audio id="redSound" preload="auto" crossorigin="anonymous">
-        <source src="red.wav" type="audio/wav">
-        <source src="red.mp3" type="audio/mpeg">
-    </audio>
-    <audio id="blueSound" preload="auto" crossorigin="anonymous">
-        <source src="blue.wav" type="audio/wav">
-        <source src="blue.mp3" type="audio/mpeg">
-    </audio>
-    <audio id="hitSound" preload="auto" crossorigin="anonymous">
-        <source src="hit.wav" type="audio/wav">
-        <source src="hit.mp3" type="audio/mpeg">
-    </audio>
-    <audio id="knifeSound" preload="auto" crossorigin="anonymous">
-        <source src="knife.wav" type="audio/wav">
-        <source src="knife.mp3" type="audio/mpeg">
-    </audio>
-    <audio id="healSound" preload="auto" crossorigin="anonymous">
-        <source src="heal.wav" type="audio/wav">
-        <source src="heal.mp3" type="audio/mpeg">
-    </audio>
-
     <script>
         // Get the canvas and its context
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-        
-        // Audio context variables
-        let audioContext = null;
-        let audioDestination = null;
-        let audioSources = {};
-        let audioInitialized = false;
-        let safariAudioMode = false;
         
         // Buttons
         const resetBtn = document.getElementById('resetBtn');
@@ -377,8 +249,6 @@
         const blueThornColorInput = document.getElementById('blueThornColor');
         const redHealthColorInput = document.getElementById('redHealthColor');
         const blueHealthColorInput = document.getElementById('blueHealthColor');
-        const toggleSoundBtn = document.getElementById('toggleSoundBtn');
-        const testAudioBtn = document.getElementById('testAudioBtn');
         
         // Background color controls
         const backgroundColorText = document.getElementById('backgroundColorText');
@@ -391,40 +261,6 @@
         const frameColorPicker = document.getElementById('frameColorPicker');
         const applyFrameBtn = document.getElementById('applyFrameBtn');
         const resetFrameBtn = document.getElementById('resetFrameBtn');
-        
-        // Screen Recorder Elements
-        const startRecordBtn = document.getElementById('startRecordBtn');
-        const stopRecordBtn = document.getElementById('stopRecordBtn');
-        const downloadBtn = document.getElementById('downloadBtn');
-        const recordingIndicator = document.getElementById('recordingIndicator');
-        const recordingStatus = document.getElementById('recordingStatus');
-        
-        // Audio elements
-        const sounds = {
-            red: document.getElementById('redSound'),
-            blue: document.getElementById('blueSound'),
-            hit: document.getElementById('hitSound'),
-            knife: document.getElementById('knifeSound'),
-            heal: document.getElementById('healSound')
-        };
-        
-        // Detect Safari
-        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-        
-        // Recording variables - Enhanced for smoother recording
-        let mediaRecorder = null;
-        let recordedChunks = [];
-        let isRecording = false;
-        let recordingCanvas = null;
-        let recordingCtx = null;
-        let recordingFrameRate = 60;
-        let recordingInterval = null;
-        let lastFrameTime = 0;
-        let frameCount = 0;
-        
-        // Performance optimization for recording
-        let recordingStream = null;
-        let recordingTimeStart = 0;
         
         // Fullscreen variables
         let isFullscreen = false;
@@ -459,7 +295,6 @@
         let blueHealthColor = "#3498db";
         let canvasBackgroundColor = "#ffffff";
         let oldBackgroundColor = canvasBackgroundColor;
-        let soundEnabled = true;
         const SOUND_COOLDOWN = 300;
         
         // Health tracking
@@ -473,10 +308,6 @@
         
         // Speed constant
         const SPEED = 6;
-        
-        // Smooth interpolation for recording
-        let lastGameState = null;
-        let currentGameState = null;
         
         // Image loading tracking
         let loadedImages = 0;
@@ -512,179 +343,6 @@
         // Power-up spawn intervals
         let knifeSpawnInterval = null;
         let healSpawnInterval = null;
-        
-        // Enhanced Safari-compatible audio initialization
-        async function initializeAudio() {
-            if (audioInitialized) return true;
-            
-            try {
-                console.log("Initializing audio for", isSafari ? "Safari" : "other browser");
-                
-                if (isSafari) {
-                    // Safari simple mode - avoid Web Audio API complications
-                    safariAudioMode = true;
-                    
-                    // Pre-load and test each audio file
-                    for (const [key, sound] of Object.entries(sounds)) {
-                        try {
-                            sound.volume = 0.5;
-                            sound.load();
-                            
-                            // Safari: Try to play and immediately pause to "unlock" audio
-                            const playPromise = sound.play();
-                            if (playPromise !== undefined) {
-                                await playPromise;
-                                sound.pause();
-                                sound.currentTime = 0;
-                            }
-                        } catch (error) {
-                            console.log(`Safari audio setup warning for ${key}:`, error.message);
-                        }
-                    }
-                    
-                    audioInitialized = true;
-                    console.log("Safari simple audio mode initialized");
-                    return true;
-                } else {
-                    // Full Web Audio API for other browsers
-                    if (!audioContext) {
-                        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                        audioDestination = audioContext.createMediaStreamDestination();
-                        
-                        Object.keys(sounds).forEach(key => {
-                            const audioElement = sounds[key];
-                            audioElement.load();
-                            
-                            try {
-                                const source = audioContext.createMediaElementSource(audioElement);
-                                source.connect(audioDestination);
-                                source.connect(audioContext.destination);
-                                audioSources[key] = source;
-                            } catch (error) {
-                                console.log(`Audio setup error for ${key}:`, error);
-                            }
-                        });
-                    }
-                    
-                    if (audioContext.state === 'suspended') {
-                        await audioContext.resume();
-                    }
-                    
-                    audioInitialized = true;
-                    console.log("Full Web Audio API initialized");
-                    return true;
-                }
-            } catch (error) {
-                console.error("Audio initialization failed:", error);
-                
-                // Fallback to simple mode
-                safariAudioMode = true;
-                audioInitialized = true;
-                console.log("Falling back to simple audio mode");
-                return true;
-            }
-        }
-        
-        // Safari-compatible audio play function
-        async function playSound(soundName) {
-            if (!soundEnabled) return;
-            
-            try {
-                if (!audioInitialized) {
-                    const success = await initializeAudio();
-                    if (!success) return;
-                }
-                
-                const sound = sounds[soundName];
-                if (!sound) return;
-                
-                if (safariAudioMode || isSafari) {
-                    // Simple mode for Safari
-                    sound.currentTime = 0;
-                    const playPromise = sound.play();
-                    if (playPromise !== undefined) {
-                        await playPromise.catch(error => {
-                            // Ignore play errors in Safari - they're often false positives
-                            console.log(`Safari play info for ${soundName}:`, error.message);
-                        });
-                    }
-                } else {
-                    // Web Audio API mode
-                    if (audioContext && audioContext.state === 'suspended') {
-                        await audioContext.resume();
-                    }
-                    
-                    sound.currentTime = 0;
-                    await sound.play().catch(error => {
-                        console.log("Sound play error:", error);
-                    });
-                }
-            } catch (error) {
-                console.error(`Error playing sound ${soundName}:`, error);
-            }
-        }
-        
-        // Test audio function for Safari debugging
-        async function testSafariAudio() {
-            console.log("Testing audio...");
-            
-            try {
-                await initializeAudio();
-                await playSound('red');
-                alert("Audio test successful! Sound should work now.");
-            } catch (error) {
-                console.error("Audio test failed:", error);
-                alert("Audio test failed: " + error.message);
-            }
-        }
-        
-        // Add test audio button event listener
-        testAudioBtn.addEventListener('click', testSafariAudio);
-        
-        // Multiple initialization attempts for Safari
-        document.addEventListener('click', async function initAudioOnClick() {
-            const success = await initializeAudio();
-            if (success) {
-                document.removeEventListener('click', initAudioOnClick);
-                console.log("Audio initialized on click");
-            }
-        }, { once: true });
-        
-        // Also try on touchstart for mobile Safari
-        document.addEventListener('touchstart', async function initAudioOnTouch() {
-            const success = await initializeAudio();
-            if (success) {
-                document.removeEventListener('touchstart', initAudioOnTouch);
-                console.log("Audio initialized on touch");
-            }
-        }, { once: true });
-        
-        // And on keydown
-        document.addEventListener('keydown', async function initAudioOnKey() {
-            const success = await initializeAudio();
-            if (success) {
-                document.removeEventListener('keydown', initAudioOnKey);
-                console.log("Audio initialized on keydown");
-            }
-        }, { once: true });
-        
-        async function playSquareSound(square) {
-            if (!soundEnabled) return;
-            
-            const now = Date.now();
-            if (now - square.lastPlayTime < SOUND_COOLDOWN) return;
-            
-            square.lastPlayTime = now;
-            
-            const soundName = square.isBlue ? 'blue' : 'red';
-            await playSound(soundName);
-        }
-        
-        // Toggle sound button
-        toggleSoundBtn.addEventListener('click', function() {
-            soundEnabled = !soundEnabled;
-            toggleSoundBtn.textContent = soundEnabled ? 'Sound: ON' : 'Sound: OFF';
-        });
         
         // Fullscreen function
         function toggleFullscreen() {
@@ -811,381 +469,6 @@
         document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
         document.addEventListener('mozfullscreenchange', handleFullscreenChange);
         document.addEventListener('MSFullscreenChange', handleFullscreenChange);
-        
-        // Enhanced game state capture for smooth interpolation
-        function captureGameState() {
-            return {
-                squares: squares.map(square => ({
-                    x: square.x,
-                    y: square.y,
-                    size: square.size,
-                    direction: square.direction,
-                    hasThorns: square.hasThorns,
-                    isBlue: square.isBlue
-                })),
-                powerUps: powerUps.map(powerUp => ({
-                    x: powerUp.x,
-                    y: powerUp.y,
-                    size: powerUp.size,
-                    type: powerUp.type
-                })),
-                frameBounds: { ...frameBounds },
-                particles: {
-                    red: redParticles.particles.map(p => ({ ...p })),
-                    blue: blueParticles.particles.map(p => ({ ...p }))
-                }
-            };
-        }
-        
-        // Interpolate between two game states for smooth recording
-        function interpolateGameState(state1, state2, factor) {
-            if (!state1 || !state2) return state2 || state1;
-            
-            const interpolated = {
-                squares: [],
-                powerUps: [],
-                frameBounds: { ...state2.frameBounds },
-                particles: state2.particles
-            };
-            
-            // Interpolate squares
-            for (let i = 0; i < Math.min(state1.squares.length, state2.squares.length); i++) {
-                const s1 = state1.squares[i];
-                const s2 = state2.squares[i];
-                
-                interpolated.squares.push({
-                    x: s1.x + (s2.x - s1.x) * factor,
-                    y: s1.y + (s2.y - s1.y) * factor,
-                    size: s1.size + (s2.size - s1.size) * factor,
-                    direction: s2.direction,
-                    hasThorns: s2.hasThorns,
-                    isBlue: s2.isBlue
-                });
-            }
-            
-            // Interpolate power-ups
-            for (let i = 0; i < Math.min(state1.powerUps.length, state2.powerUps.length); i++) {
-                const p1 = state1.powerUps[i];
-                const p2 = state2.powerUps[i];
-                
-                interpolated.powerUps.push({
-                    x: p1.x + (p2.x - p1.x) * factor,
-                    y: p1.y + (p2.y - p1.y) * factor,
-                    size: p1.size + (p2.size - p1.size) * factor,
-                    type: p2.type
-                });
-            }
-            
-            return interpolated;
-        }
-        
-        // Enhanced render function for ultra-smooth recording
-        function renderToCanvas(targetCtx, gameState = null) {
-            const renderState = gameState || {
-                squares: squares,
-                powerUps: powerUps,
-                frameBounds: frameBounds,
-                particles: {
-                    red: redParticles.particles,
-                    blue: blueParticles.particles
-                }
-            };
-            
-            // Clear canvas with background
-            targetCtx.clearRect(0, 0, canvas.width, canvas.height);
-            if (canvasBackgroundColor !== '#ffffff') {
-                targetCtx.fillStyle = canvasBackgroundColor;
-                targetCtx.fillRect(0, 0, canvas.width, canvas.height);
-            }
-            
-            // Draw collision frame
-            targetCtx.save();
-            targetCtx.shadowColor = frameColor;
-            targetCtx.shadowBlur = 8;
-            targetCtx.strokeStyle = frameColor;
-            targetCtx.lineWidth = frameThickness * (isFullscreen ? fullscreenScale : 1);
-            targetCtx.strokeRect(
-                renderState.frameBounds.left,
-                renderState.frameBounds.top,
-                renderState.frameBounds.right - renderState.frameBounds.left,
-                renderState.frameBounds.bottom - renderState.frameBounds.top
-            );
-            targetCtx.restore();
-            
-            // Draw power-ups
-            renderState.powerUps.forEach(powerUp => {
-                if (powerUp.type === 'knife' && knifeImageReady) {
-                    targetCtx.drawImage(knifeImg, powerUp.x, powerUp.y, powerUp.size, powerUp.size);
-                } else if (powerUp.type === 'heal' && healImageReady) {
-                    targetCtx.drawImage(healImg, powerUp.x, powerUp.y, powerUp.size, powerUp.size);
-                } else {
-                    targetCtx.fillStyle = powerUp.type === 'knife' ? '#333' : '#2ecc71';
-                    targetCtx.fillRect(powerUp.x, powerUp.y, powerUp.size, powerUp.size);
-                }
-            });
-            
-            // Draw squares
-            renderState.squares.forEach(square => {
-                if (square.size <= 0) return;
-                
-                // Draw square
-                if (square.isBlue && blueImageReady) {
-                    targetCtx.drawImage(blueSquareImg, square.x, square.y, square.size, square.size);
-                } else if (!square.isBlue && redImageReady) {
-                    targetCtx.drawImage(redSquareImg, square.x, square.y, square.size, square.size);
-                } else {
-                    targetCtx.fillStyle = square.isBlue ? BLUE_SQUARE_COLOR : RED_SQUARE_COLOR;
-                    targetCtx.fillRect(square.x, square.y, square.size, square.size);
-                }
-                
-                // Draw border
-                targetCtx.strokeStyle = '#333';
-                targetCtx.lineWidth = 2 * (isFullscreen ? fullscreenScale : 1);
-                targetCtx.strokeRect(square.x, square.y, square.size, square.size);
-                
-                // Draw thorns
-                if (square.hasThorns) {
-                    drawThornsToCanvas(targetCtx, square);
-                }
-            });
-            
-            // Draw particles
-            if (renderState.particles) {
-                renderState.particles.red.forEach(particle => {
-                    drawParticleToCanvas(targetCtx, particle);
-                });
-                renderState.particles.blue.forEach(particle => {
-                    drawParticleToCanvas(targetCtx, particle);
-                });
-            }
-        }
-        
-        function drawThornsToCanvas(targetCtx, square) {
-            const size = square.size;
-            const thornSize = size / 16;
-            const thornColor = square.isBlue ? blueThornColor : redThornColor;
-            
-            targetCtx.fillStyle = thornColor;
-            
-            // Top side
-            for (let i = 0; i < size; i += thornSize * 2) {
-                targetCtx.beginPath();
-                targetCtx.moveTo(square.x + i, square.y);
-                targetCtx.lineTo(square.x + i + thornSize, square.y - thornSize);
-                targetCtx.lineTo(square.x + i + thornSize * 2, square.y);
-                targetCtx.closePath();
-                targetCtx.fill();
-            }
-            
-            // Bottom side
-            for (let i = 0; i < size; i += thornSize * 2) {
-                targetCtx.beginPath();
-                targetCtx.moveTo(square.x + i, square.y + size);
-                targetCtx.lineTo(square.x + i + thornSize, square.y + size + thornSize);
-                targetCtx.lineTo(square.x + i + thornSize * 2, square.y + size);
-                targetCtx.closePath();
-                targetCtx.fill();
-            }
-            
-            // Left side
-            for (let i = 0; i < size; i += thornSize * 2) {
-                targetCtx.beginPath();
-                targetCtx.moveTo(square.x, square.y + i);
-                targetCtx.lineTo(square.x - thornSize, square.y + i + thornSize);
-                targetCtx.lineTo(square.x, square.y + i + thornSize * 2);
-                targetCtx.closePath();
-                targetCtx.fill();
-            }
-            
-            // Right side
-            for (let i = 0; i < size; i += thornSize * 2) {
-                targetCtx.beginPath();
-                targetCtx.moveTo(square.x + size, square.y + i);
-                targetCtx.lineTo(square.x + size + thornSize, square.y + i + thornSize);
-                targetCtx.lineTo(square.x + size, square.y + i + thornSize * 2);
-                targetCtx.closePath();
-                targetCtx.fill();
-            }
-        }
-        
-        function drawParticleToCanvas(targetCtx, particle) {
-            targetCtx.save();
-            targetCtx.globalAlpha = particle.life;
-            targetCtx.fillStyle = particle.color;
-            targetCtx.shadowBlur = 10;
-            targetCtx.shadowColor = particle.color;
-            targetCtx.beginPath();
-            targetCtx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
-            targetCtx.fill();
-            targetCtx.restore();
-        }
-        
-        // Ultra-smooth recording system
-        async function startRecording() {
-            try {
-                if (!audioInitialized) {
-                    const success = await initializeAudio();
-                    if (!success) {
-                        alert("Could not initialize audio. Please click 'Test Audio' first.");
-                        return;
-                    }
-                }
-                
-                // Get selected frame rate
-                const qualityRadios = document.querySelectorAll('input[name="quality"]');
-                recordingFrameRate = parseInt([...qualityRadios].find(r => r.checked).value);
-                
-                recordedChunks = [];
-                frameCount = 0;
-                
-                // Create high-quality recording canvas
-                recordingCanvas = document.createElement('canvas');
-                recordingCanvas.width = canvas.width;
-                recordingCanvas.height = canvas.height;
-                recordingCtx = recordingCanvas.getContext('2d');
-                
-                // Enable anti-aliasing and image smoothing for ultra-smooth rendering
-                recordingCtx.imageSmoothingEnabled = true;
-                recordingCtx.imageSmoothingQuality = 'high';
-                
-                // Capture stream at exact frame rate
-                recordingStream = recordingCanvas.captureStream(recordingFrameRate);
-                
-                // Get audio stream - with Safari compatibility
-                let combinedStream;
-                if (safariAudioMode || isSafari) {
-                    // Safari: Just use video stream, audio recording might not work reliably
-                    combinedStream = recordingStream;
-                } else {
-                    // Other browsers: Full audio + video
-                    const audioStream = audioDestination.stream;
-                    combinedStream = new MediaStream([
-                        ...recordingStream.getVideoTracks(),
-                        ...audioStream.getAudioTracks()
-                    ]);
-                }
-                
-                // High-quality MediaRecorder settings
-                let options = { 
-                    videoBitsPerSecond: 25000000, // 25 Mbps for ultra-high quality
-                    audioBitsPerSecond: 320000    // High-quality audio
-                };
-                
-                // Try best available format
-                const formats = [
-                    'video/webm;codecs=vp9,opus',
-                    'video/webm;codecs=vp8,opus',
-                    'video/webm;codecs=h264,opus',
-                    'video/webm',
-                    'video/mp4'
-                ];
-                
-                for (const format of formats) {
-                    if (MediaRecorder.isTypeSupported(format)) {
-                        options.mimeType = format;
-                        break;
-                    }
-                }
-                
-                mediaRecorder = new MediaRecorder(combinedStream, options);
-                
-                mediaRecorder.ondataavailable = (event) => {
-                    if (event.data.size > 0) {
-                        recordedChunks.push(event.data);
-                    }
-                };
-                
-                mediaRecorder.onstop = () => {
-                    clearInterval(recordingInterval);
-                    
-                    const blob = new Blob(recordedChunks, { 
-                        type: options.mimeType || 'video/webm' 
-                    });
-                    const url = URL.createObjectURL(blob);
-                    
-                    downloadBtn.disabled = false;
-                    downloadBtn.onclick = () => {
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = `ultra-smooth-bouncing-squares-${recordingFrameRate}fps-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.webm`;
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                    };
-                    
-                    recordingStatus.textContent = 'Recording Complete - Ready to Download';
-                    recordingIndicator.classList.remove('active');
-                };
-                
-                // Start recording with precise timing
-                mediaRecorder.start(50); // Collect data every 50ms for smoother data flow
-                isRecording = true;
-                recordingTimeStart = performance.now();
-                
-                // Capture initial state
-                lastGameState = captureGameState();
-                
-                // Set up high-precision recording loop
-                const frameInterval = 1000 / recordingFrameRate;
-                let expectedTime = performance.now();
-                
-                recordingInterval = setInterval(() => {
-                    if (!isRecording) return;
-                    
-                    // Capture current game state
-                    currentGameState = captureGameState();
-                    
-                    // Calculate interpolation factor for ultra-smooth motion
-                    const currentTime = performance.now();
-                    const timeSinceLastFrame = currentTime - lastFrameTime;
-                    const interpolationFactor = Math.min(timeSinceLastFrame / 16.67, 1); // Based on 60fps game loop
-                    
-                    // Create interpolated state for smoother recording
-                    const interpolatedState = interpolateGameState(lastGameState, currentGameState, interpolationFactor);
-                    
-                    // Render to recording canvas with interpolated state
-                    renderToCanvas(recordingCtx, interpolatedState);
-                    
-                    // Update states
-                    lastGameState = currentGameState;
-                    lastFrameTime = currentTime;
-                    frameCount++;
-                    
-                    // Maintain precise timing
-                    expectedTime += frameInterval;
-                    const drift = currentTime - expectedTime;
-                    if (drift > frameInterval) {
-                        expectedTime = currentTime; // Reset if we're too far behind
-                    }
-                }, frameInterval);
-                
-                // Update UI
-                startRecordBtn.disabled = true;
-                stopRecordBtn.disabled = false;
-                downloadBtn.disabled = true;
-                recordingStatus.textContent = `Recording at ${recordingFrameRate} FPS...`;
-                recordingIndicator.classList.add('active');
-                
-            } catch (error) {
-                console.error('Error starting recording:', error);
-                alert('Error starting recording. Please try a different quality setting.');
-            }
-        }
-        
-        function stopRecording() {
-            if (mediaRecorder && isRecording) {
-                mediaRecorder.stop();
-                isRecording = false;
-                
-                if (recordingInterval) {
-                    clearInterval(recordingInterval);
-                }
-                
-                startRecordBtn.disabled = false;
-                stopRecordBtn.disabled = true;
-                recordingStatus.textContent = 'Processing...';
-            }
-        }
         
         // Power-up spawn functions
         function spawnKnifePowerUp() {
@@ -1324,8 +607,6 @@
                 redParticles.particles.push(particle);
                 blueParticles.particles.push(particle);
             }
-            
-            playSound('hit');
         }
         
         // Background color control functions
@@ -1464,7 +745,6 @@
         
         // Keyboard Controls
         document.addEventListener('keydown', function(event) {
-            // Prevent default for specific keys to avoid browser shortcuts
             const key = event.key.toLowerCase();
             
             switch(key) {
@@ -1474,30 +754,9 @@
                     pauseBtn.click();
                     break;
                     
-                case 'r':
-                    event.preventDefault();
-                    if (!isRecording) {
-                        startRecording();
-                    }
-                    break;
-                    
-                case 'e':
-                    event.preventDefault();
-                    if (isRecording) {
-                        stopRecording();
-                    }
-                    break;
-                    
                 case 's':
                     event.preventDefault();
                     resetBtn.click();
-                    break;
-                    
-                case 'd':
-                    event.preventDefault();
-                    if (!downloadBtn.disabled) {
-                        downloadBtn.click();
-                    }
                     break;
                     
                 case 'f':
@@ -1524,13 +783,6 @@
                     break;
             }
         });
-
-        // Event listeners for recording controls
-        startRecordBtn.addEventListener('click', async function() {
-            startRecording();
-        });
-        
-        stopRecordBtn.addEventListener('click', stopRecording);
         
         // Function to update health bar display
         function updateHealthBar(healthBar, health, maxHealth, color) {
@@ -1659,7 +911,7 @@
         }
 
         // Function to handle collision between two squares with reflective physics
-        async function handleCollision(square1, square2) {
+        function handleCollision(square1, square2) {
             const side1 = getCollisionSide(square1, square2);
             const side2 = getCollisionSide(square2, square1);
             
@@ -1701,9 +953,6 @@
             
             separateSquares(square1, square2);
             
-            await playSquareSound(square1);
-            await playSquareSound(square2);
-            
             // Check if damage should be dealt
             const damageAmount = 30 * (isFullscreen ? fullscreenScale : 1);
             const minSize = 30 * (isFullscreen ? fullscreenScale : 1);
@@ -1729,7 +978,6 @@
                 }
                 
                 squares.forEach(sq => sq.hasThorns = false);
-                await playSound('hit');
             } else if (square2.hasThorns && !square1.hasThorns) {
                 const newSize = Math.max(minSize, square1.size - damageAmount);
                 
@@ -1751,7 +999,6 @@
                 }
                 
                 squares.forEach(sq => sq.hasThorns = false);
-                await playSound('hit');
             }
         }
         
@@ -1809,8 +1056,27 @@
             
             const currentTime = Date.now();
             
-            // Clear and render to main canvas
-            renderToCanvas(ctx);
+            // Clear canvas with background
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (canvasBackgroundColor !== '#ffffff') {
+                ctx.fillStyle = canvasBackgroundColor;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+            
+            // Draw collision frame
+            drawCollisionFrame();
+            
+            // Draw power-ups
+            powerUps.forEach(powerUp => {
+                if (powerUp.type === 'knife' && knifeImageReady) {
+                    ctx.drawImage(knifeImg, powerUp.x, powerUp.y, powerUp.size, powerUp.size);
+                } else if (powerUp.type === 'heal' && healImageReady) {
+                    ctx.drawImage(healImg, powerUp.x, powerUp.y, powerUp.size, powerUp.size);
+                } else {
+                    ctx.fillStyle = powerUp.type === 'knife' ? '#333' : '#2ecc71';
+                    ctx.fillRect(powerUp.x, powerUp.y, powerUp.size, powerUp.size);
+                }
+            });
             
             // Update power-ups
             for (let i = powerUps.length - 1; i >= 0; i--) {
@@ -1826,14 +1092,10 @@
                             
                             square.hasThorns = true;
                             square.thornExpiryTime = currentTime + THORN_DURATION;
-                            
-                            playSound('knife');
                         } else if (powerUp.type === 'heal') {
                             const healAmount = 30 * (isFullscreen ? fullscreenScale : 1);
                             const maxSize = DEFAULT_SQUARE_SIZE * (isFullscreen ? fullscreenScale : 1);
                             square.size = Math.min(maxSize, square.size + healAmount);
-                            
-                            playSound('heal');
                         }
                         
                         powerUpCollected = true;
@@ -1864,7 +1126,6 @@
                 // Check collision with frame boundaries
                 if (square.x <= frameBounds.left || square.x + square.size >= frameBounds.right) {
                     square.vx *= -1;
-                    playSquareSound(square);
                     shrinkFrame();
                     
                     if (square.direction === 0) square.direction = 1;
@@ -1878,7 +1139,6 @@
                 
                 if (square.y <= frameBounds.top || square.y + square.size >= frameBounds.bottom) {
                     square.vy *= -1;
-                    playSquareSound(square);
                     shrinkFrame();
                     
                     if (square.direction === 0) square.direction = 3;
@@ -1888,6 +1148,26 @@
                     
                     if (square.y <= frameBounds.top) square.y = frameBounds.top;
                     if (square.y + square.size >= frameBounds.bottom) square.y = frameBounds.bottom - square.size;
+                }
+                
+                // Draw square
+                if (square.isBlue && blueImageReady) {
+                    ctx.drawImage(blueSquareImg, square.x, square.y, square.size, square.size);
+                } else if (!square.isBlue && redImageReady) {
+                    ctx.drawImage(redSquareImg, square.x, square.y, square.size, square.size);
+                } else {
+                    ctx.fillStyle = square.isBlue ? BLUE_SQUARE_COLOR : RED_SQUARE_COLOR;
+                    ctx.fillRect(square.x, square.y, square.size, square.size);
+                }
+                
+                // Draw border
+                ctx.strokeStyle = '#333';
+                ctx.lineWidth = 2 * (isFullscreen ? fullscreenScale : 1);
+                ctx.strokeRect(square.x, square.y, square.size, square.size);
+                
+                // Draw thorns
+                if (square.hasThorns) {
+                    drawThorns(square);
                 }
             }
             
