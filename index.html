@@ -222,6 +222,14 @@
             align-items: center;
             gap: 5px;
         }
+        .audio-test-btn {
+            background-color: #e67e22;
+            font-size: 12px;
+            padding: 4px 8px;
+        }
+        .audio-test-btn:hover {
+            background-color: #d35400;
+        }
     </style>
 </head>
 <body>
@@ -290,6 +298,7 @@
             <button id="applyBackgroundBtn">Apply</button>
             <button id="restoreBackgroundBtn" class="restore-btn">Restore Previous</button>
             <button id="toggleSoundBtn" class="sound-btn">Sound: ON</button>
+            <button id="testAudioBtn" class="audio-test-btn">Test Audio</button>
         </div>
         
         <!-- Frame Color Control -->
@@ -327,11 +336,26 @@
     </div>
 
     <!-- Audio elements -->
-    <audio id="redSound" src="red.wav" preload="auto"></audio>
-    <audio id="blueSound" src="blue.wav" preload="auto"></audio>
-    <audio id="hitSound" src="hit.wav" preload="auto"></audio>
-    <audio id="knifeSound" src="knife.wav" preload="auto"></audio>
-    <audio id="healSound" src="heal.wav" preload="auto"></audio>
+    <audio id="redSound" preload="auto" crossorigin="anonymous">
+        <source src="red.wav" type="audio/wav">
+        <source src="red.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="blueSound" preload="auto" crossorigin="anonymous">
+        <source src="blue.wav" type="audio/wav">
+        <source src="blue.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="hitSound" preload="auto" crossorigin="anonymous">
+        <source src="hit.wav" type="audio/wav">
+        <source src="hit.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="knifeSound" preload="auto" crossorigin="anonymous">
+        <source src="knife.wav" type="audio/wav">
+        <source src="knife.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="healSound" preload="auto" crossorigin="anonymous">
+        <source src="heal.wav" type="audio/wav">
+        <source src="heal.mp3" type="audio/mpeg">
+    </audio>
 
     <script>
         // Get the canvas and its context
@@ -343,6 +367,7 @@
         let audioDestination = null;
         let audioSources = {};
         let audioInitialized = false;
+        let safariAudioMode = false;
         
         // Buttons
         const resetBtn = document.getElementById('resetBtn');
@@ -353,6 +378,7 @@
         const redHealthColorInput = document.getElementById('redHealthColor');
         const blueHealthColorInput = document.getElementById('blueHealthColor');
         const toggleSoundBtn = document.getElementById('toggleSoundBtn');
+        const testAudioBtn = document.getElementById('testAudioBtn');
         
         // Background color controls
         const backgroundColorText = document.getElementById('backgroundColorText');
@@ -381,6 +407,9 @@
             knife: document.getElementById('knifeSound'),
             heal: document.getElementById('healSound')
         };
+        
+        // Detect Safari
+        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
         
         // Recording variables - Enhanced for smoother recording
         let mediaRecorder = null;
@@ -483,6 +512,179 @@
         // Power-up spawn intervals
         let knifeSpawnInterval = null;
         let healSpawnInterval = null;
+        
+        // Enhanced Safari-compatible audio initialization
+        async function initializeAudio() {
+            if (audioInitialized) return true;
+            
+            try {
+                console.log("Initializing audio for", isSafari ? "Safari" : "other browser");
+                
+                if (isSafari) {
+                    // Safari simple mode - avoid Web Audio API complications
+                    safariAudioMode = true;
+                    
+                    // Pre-load and test each audio file
+                    for (const [key, sound] of Object.entries(sounds)) {
+                        try {
+                            sound.volume = 0.5;
+                            sound.load();
+                            
+                            // Safari: Try to play and immediately pause to "unlock" audio
+                            const playPromise = sound.play();
+                            if (playPromise !== undefined) {
+                                await playPromise;
+                                sound.pause();
+                                sound.currentTime = 0;
+                            }
+                        } catch (error) {
+                            console.log(`Safari audio setup warning for ${key}:`, error.message);
+                        }
+                    }
+                    
+                    audioInitialized = true;
+                    console.log("Safari simple audio mode initialized");
+                    return true;
+                } else {
+                    // Full Web Audio API for other browsers
+                    if (!audioContext) {
+                        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        audioDestination = audioContext.createMediaStreamDestination();
+                        
+                        Object.keys(sounds).forEach(key => {
+                            const audioElement = sounds[key];
+                            audioElement.load();
+                            
+                            try {
+                                const source = audioContext.createMediaElementSource(audioElement);
+                                source.connect(audioDestination);
+                                source.connect(audioContext.destination);
+                                audioSources[key] = source;
+                            } catch (error) {
+                                console.log(`Audio setup error for ${key}:`, error);
+                            }
+                        });
+                    }
+                    
+                    if (audioContext.state === 'suspended') {
+                        await audioContext.resume();
+                    }
+                    
+                    audioInitialized = true;
+                    console.log("Full Web Audio API initialized");
+                    return true;
+                }
+            } catch (error) {
+                console.error("Audio initialization failed:", error);
+                
+                // Fallback to simple mode
+                safariAudioMode = true;
+                audioInitialized = true;
+                console.log("Falling back to simple audio mode");
+                return true;
+            }
+        }
+        
+        // Safari-compatible audio play function
+        async function playSound(soundName) {
+            if (!soundEnabled) return;
+            
+            try {
+                if (!audioInitialized) {
+                    const success = await initializeAudio();
+                    if (!success) return;
+                }
+                
+                const sound = sounds[soundName];
+                if (!sound) return;
+                
+                if (safariAudioMode || isSafari) {
+                    // Simple mode for Safari
+                    sound.currentTime = 0;
+                    const playPromise = sound.play();
+                    if (playPromise !== undefined) {
+                        await playPromise.catch(error => {
+                            // Ignore play errors in Safari - they're often false positives
+                            console.log(`Safari play info for ${soundName}:`, error.message);
+                        });
+                    }
+                } else {
+                    // Web Audio API mode
+                    if (audioContext && audioContext.state === 'suspended') {
+                        await audioContext.resume();
+                    }
+                    
+                    sound.currentTime = 0;
+                    await sound.play().catch(error => {
+                        console.log("Sound play error:", error);
+                    });
+                }
+            } catch (error) {
+                console.error(`Error playing sound ${soundName}:`, error);
+            }
+        }
+        
+        // Test audio function for Safari debugging
+        async function testSafariAudio() {
+            console.log("Testing audio...");
+            
+            try {
+                await initializeAudio();
+                await playSound('red');
+                alert("Audio test successful! Sound should work now.");
+            } catch (error) {
+                console.error("Audio test failed:", error);
+                alert("Audio test failed: " + error.message);
+            }
+        }
+        
+        // Add test audio button event listener
+        testAudioBtn.addEventListener('click', testSafariAudio);
+        
+        // Multiple initialization attempts for Safari
+        document.addEventListener('click', async function initAudioOnClick() {
+            const success = await initializeAudio();
+            if (success) {
+                document.removeEventListener('click', initAudioOnClick);
+                console.log("Audio initialized on click");
+            }
+        }, { once: true });
+        
+        // Also try on touchstart for mobile Safari
+        document.addEventListener('touchstart', async function initAudioOnTouch() {
+            const success = await initializeAudio();
+            if (success) {
+                document.removeEventListener('touchstart', initAudioOnTouch);
+                console.log("Audio initialized on touch");
+            }
+        }, { once: true });
+        
+        // And on keydown
+        document.addEventListener('keydown', async function initAudioOnKey() {
+            const success = await initializeAudio();
+            if (success) {
+                document.removeEventListener('keydown', initAudioOnKey);
+                console.log("Audio initialized on keydown");
+            }
+        }, { once: true });
+        
+        async function playSquareSound(square) {
+            if (!soundEnabled) return;
+            
+            const now = Date.now();
+            if (now - square.lastPlayTime < SOUND_COOLDOWN) return;
+            
+            square.lastPlayTime = now;
+            
+            const soundName = square.isBlue ? 'blue' : 'red';
+            await playSound(soundName);
+        }
+        
+        // Toggle sound button
+        toggleSoundBtn.addEventListener('click', function() {
+            soundEnabled = !soundEnabled;
+            toggleSoundBtn.textContent = soundEnabled ? 'Sound: ON' : 'Sound: OFF';
+        });
         
         // Fullscreen function
         function toggleFullscreen() {
@@ -609,44 +811,6 @@
         document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
         document.addEventListener('mozfullscreenchange', handleFullscreenChange);
         document.addEventListener('MSFullscreenChange', handleFullscreenChange);
-        
-        // Initialize audio system
-        async function initializeAudio() {
-            if (audioInitialized) return true;
-            
-            try {
-                if (!audioContext) {
-                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                    audioDestination = audioContext.createMediaStreamDestination();
-                    
-                    Object.keys(sounds).forEach(key => {
-                        const audioElement = sounds[key];
-                        const source = audioContext.createMediaElementSource(audioElement);
-                        source.connect(audioDestination);
-                        source.connect(audioContext.destination);
-                        audioSources[key] = source;
-                    });
-                }
-                
-                if (audioContext.state === 'suspended') {
-                    await audioContext.resume();
-                }
-                
-                audioInitialized = true;
-                return true;
-            } catch (error) {
-                console.error("Audio initialization failed:", error);
-                return false;
-            }
-        }
-        
-        // Initialize audio on first user interaction
-        document.addEventListener('click', async function initAudioOnClick() {
-            const success = await initializeAudio();
-            if (success) {
-                document.removeEventListener('click', initAudioOnClick);
-            }
-        }, { once: true });
         
         // Enhanced game state capture for smooth interpolation
         function captureGameState() {
@@ -862,7 +1026,7 @@
                 if (!audioInitialized) {
                     const success = await initializeAudio();
                     if (!success) {
-                        alert("Could not initialize audio. Please interact with the page first.");
+                        alert("Could not initialize audio. Please click 'Test Audio' first.");
                         return;
                     }
                 }
@@ -887,14 +1051,19 @@
                 // Capture stream at exact frame rate
                 recordingStream = recordingCanvas.captureStream(recordingFrameRate);
                 
-                // Get audio stream
-                const audioStream = audioDestination.stream;
-                
-                // Combine streams
-                const combinedStream = new MediaStream([
-                    ...recordingStream.getVideoTracks(),
-                    ...audioStream.getAudioTracks()
-                ]);
+                // Get audio stream - with Safari compatibility
+                let combinedStream;
+                if (safariAudioMode || isSafari) {
+                    // Safari: Just use video stream, audio recording might not work reliably
+                    combinedStream = recordingStream;
+                } else {
+                    // Other browsers: Full audio + video
+                    const audioStream = audioDestination.stream;
+                    combinedStream = new MediaStream([
+                        ...recordingStream.getVideoTracks(),
+                        ...audioStream.getAudioTracks()
+                    ]);
+                }
                 
                 // High-quality MediaRecorder settings
                 let options = { 
@@ -1044,50 +1213,6 @@
                 });
             }
         }
-        
-        // Sound functions
-        async function playSound(soundName) {
-            if (!soundEnabled) return;
-            
-            try {
-                if (!audioInitialized) {
-                    const success = await initializeAudio();
-                    if (!success) return;
-                }
-                
-                if (audioContext && audioContext.state === 'suspended') {
-                    await audioContext.resume();
-                }
-                
-                const sound = sounds[soundName];
-                if (sound) {
-                    sound.currentTime = 0;
-                    await sound.play().catch(error => {
-                        console.log("Sound play error:", error);
-                    });
-                }
-            } catch (error) {
-                console.error("Error playing sound:", error);
-            }
-        }
-        
-        async function playSquareSound(square) {
-            if (!soundEnabled) return;
-            
-            const now = Date.now();
-            if (now - square.lastPlayTime < SOUND_COOLDOWN) return;
-            
-            square.lastPlayTime = now;
-            
-            const soundName = square.isBlue ? 'blue' : 'red';
-            await playSound(soundName);
-        }
-        
-        // Toggle sound button
-        toggleSoundBtn.addEventListener('click', function() {
-            soundEnabled = !soundEnabled;
-            toggleSoundBtn.textContent = soundEnabled ? 'Sound: ON' : 'Sound: OFF';
-        });
         
         // Particle System
         class Particle {
