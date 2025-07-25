@@ -470,10 +470,23 @@
         document.addEventListener('mozfullscreenchange', handleFullscreenChange);
         document.addEventListener('MSFullscreenChange', handleFullscreenChange);
         
+        // Random position functions
+        function getRandomPosition(size = POWER_UP_SIZE) {
+            const objectSize = size * (isFullscreen ? fullscreenScale : 1);
+            return {
+                x: frameBounds.left + Math.random() * (frameBounds.right - frameBounds.left - objectSize),
+                y: frameBounds.top + Math.random() * (frameBounds.bottom - frameBounds.top - objectSize)
+            };
+        }
+        
+        function getRandomSquarePosition() {
+            return getRandomPosition(DEFAULT_SQUARE_SIZE);
+        }
+        
         // Power-up spawn functions
         function spawnKnifePowerUp() {
             if (knifeImageReady) {
-                const pos = getRandomPosition();
+                const pos = getRandomPosition(POWER_UP_SIZE);
                 powerUps.push({
                     x: pos.x,
                     y: pos.y,
@@ -486,7 +499,7 @@
         
         function spawnHealPowerUp() {
             if (healImageReady) {
-                const pos = getRandomPosition();
+                const pos = getRandomPosition(POWER_UP_SIZE);
                 powerUps.push({
                     x: pos.x,
                     y: pos.y,
@@ -735,14 +748,6 @@
         
         resetFrameBtn.addEventListener('click', resetFrame);
         
-        function getRandomPosition() {
-            const powerUpSize = POWER_UP_SIZE * (isFullscreen ? fullscreenScale : 1);
-            return {
-                x: frameBounds.left + Math.random() * (frameBounds.right - frameBounds.left - powerUpSize),
-                y: frameBounds.top + Math.random() * (frameBounds.bottom - frameBounds.top - powerUpSize)
-            };
-        }
-        
         // Keyboard Controls
         document.addEventListener('keydown', function(event) {
             const key = event.key.toLowerCase();
@@ -852,11 +857,28 @@
             };
         }
         
+        // Initialize squares with random positions
+        function initializeSquares() {
+            const bluePos = getRandomSquarePosition();
+            const redPos = getRandomSquarePosition();
+            
+            // Ensure squares don't spawn too close to each other
+            let attempts = 0;
+            while (Math.abs(bluePos.x - redPos.x) < 200 && Math.abs(bluePos.y - redPos.y) < 200 && attempts < 10) {
+                const newRedPos = getRandomSquarePosition();
+                redPos.x = newRedPos.x;
+                redPos.y = newRedPos.y;
+                attempts++;
+            }
+            
+            return [
+                createSquare(bluePos.x, bluePos.y, 0, '#3498db', 'blue.png', true),
+                createSquare(redPos.x, redPos.y, 2, '#e74c3c', 'red.png', false)
+            ];
+        }
+        
         // Initialize squares
-        let squares = [
-            createSquare(100, 150, 0, '#3498db', 'blue.png', true),
-            createSquare(500, 400, 2, '#e74c3c', 'red.png', false)
-        ];
+        let squares = initializeSquares();
         
         // Powerups array
         let powerUps = [];
@@ -1271,15 +1293,12 @@
         updateHealthBar(redHealthBar, redSquareHealth, 4, redHealthColor);
         updateHealthBar(blueHealthBar, blueSquareHealth, 4, blueHealthColor);
         
-        // Event listeners for buttons
+        // Event listeners for buttons - UPDATED RESET FUNCTION
         resetBtn.addEventListener('click', function() {
             if (knifeSpawnInterval) clearInterval(knifeSpawnInterval);
             if (healSpawnInterval) clearInterval(healSpawnInterval);
             
-            squares = [
-                createSquare(100, 150, 0, '#3498db', 'blue.png', true),
-                createSquare(500, 400, 2, '#e74c3c', 'red.png', false)
-            ];
+            squares = initializeSquares(); // Use random positions instead of fixed ones
             powerUps = [];
             speedMultiplier = 1;
             speedBtn.textContent = 'Speed: 1x';
