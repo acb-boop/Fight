@@ -2,7 +2,6 @@
 <html>
 <head>
     <title>Bouncing Squares Game</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <style>
         body {
             display: flex;
@@ -12,30 +11,24 @@
             margin: 0;
             background-color: #f0f0f0;
             font-family: Arial, sans-serif;
-            padding: 10px;
-            box-sizing: border-box;
+            padding: 20px;
         }
         #container {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 15px;
-            width: 100%;
-            max-width: 1200px;
+            gap: 20px;
         }
         #canvas-wrapper {
             position: relative;
             display: flex;
             flex-direction: column;
             align-items: center;
-            width: 100%;
         }
         .health-bars {
             display: flex;
-            gap: 15px;
+            gap: 20px;
             margin-bottom: 10px;
-            flex-wrap: wrap;
-            justify-content: center;
         }
         .health-bar {
             display: flex;
@@ -44,8 +37,8 @@
             gap: 5px;
         }
         .health-bar-container {
-            width: 150px;
-            height: 18px;
+            width: 180px;
+            height: 20px;
             border: 2px solid #333;
             background-color: #ddd;
             display: flex;
@@ -62,49 +55,34 @@
             border-right: none;
         }
         .health-bar-label {
-            font-size: 11px;
+            font-size: 12px;
             font-weight: bold;
             color: #333;
         }
         canvas {
             border: 2px solid #333;
             background-color: white;
-            max-width: 100%;
-            height: auto;
-            touch-action: none;
         }
         canvas:fullscreen {
             object-fit: contain;
         }
-        .main-controls {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            justify-content: center;
-            margin-bottom: 10px;
-        }
         .controls {
             display: flex;
-            gap: 10px;
+            gap: 15px;
             flex-wrap: wrap;
             justify-content: center;
         }
         button {
-            padding: 10px 16px;
+            padding: 8px 16px;
             background-color: #4CAF50;
             color: white;
             border: none;
-            border-radius: 6px;
+            border-radius: 4px;
             cursor: pointer;
             font-size: 14px;
-            min-width: 80px;
-            touch-action: manipulation;
         }
         button:hover {
             background-color: #45a049;
-        }
-        button:active {
-            transform: scale(0.95);
         }
         button:disabled {
             background-color: #cccccc;
@@ -117,25 +95,22 @@
             background-color: #8e44ad;
         }
         .fullscreen-btn {
-            background-color: #e67e22;
+            background-color: #3498db;
         }
         .fullscreen-btn:hover {
-            background-color: #d35400;
+            background-color: #2980b9;
         }
         .color-picker {
             display: flex;
             align-items: center;
-            gap: 8px;
-            margin: 5px 0;
-            flex-wrap: wrap;
-            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
         }
         .health-color-controls {
             display: flex;
-            gap: 15px;
+            gap: 20px;
             margin-top: 10px;
             justify-content: center;
-            flex-wrap: wrap;
         }
         .health-color-group {
             display: flex;
@@ -146,29 +121,25 @@
         .background-color-control {
             display: flex;
             align-items: center;
-            gap: 8px;
-            margin: 5px 0;
-            padding: 8px;
+            gap: 10px;
+            margin-top: 10px;
+            padding: 10px;
             background-color: #f9f9f9;
             border-radius: 8px;
             border: 1px solid #ddd;
-            flex-wrap: wrap;
-            justify-content: center;
         }
         label {
             font-weight: bold;
-            font-size: 12px;
         }
         .color-input {
-            padding: 6px;
+            padding: 4px;
             border: 1px solid #ccc;
             border-radius: 4px;
-            width: 70px;
+            width: 80px;
             text-align: center;
-            font-size: 12px;
         }
         .color-picker-input {
-            width: 40px;
+            width: 50px;
             height: 30px;
             border: 1px solid #ccc;
             border-radius: 4px;
@@ -178,81 +149,22 @@
         .frame-color-control {
             display: flex;
             align-items: center;
-            gap: 8px;
-            margin: 5px 0;
-            padding: 8px;
+            gap: 10px;
+            margin-top: 10px;
+            padding: 10px;
             background-color: #f9f9f9;
             border-radius: 8px;
             border: 1px solid #ddd;
-            flex-wrap: wrap;
-            justify-content: center;
         }
         .game-info {
-            font-size: 11px;
+            font-size: 12px;
             color: #666;
             text-align: center;
             margin-top: 5px;
-            padding: 8px;
+            padding: 10px;
             background-color: #e8e8e8;
             border-radius: 8px;
             border: 2px solid #ccc;
-        }
-        
-        /* Mobile responsive adjustments */
-        @media (max-width: 768px) {
-            body {
-                padding: 5px;
-            }
-            #container {
-                gap: 10px;
-            }
-            canvas {
-                width: 100%;
-                max-width: 100vw;
-            }
-            button {
-                padding: 12px 16px;
-                font-size: 16px;
-                min-width: 90px;
-            }
-            .health-bars {
-                gap: 10px;
-            }
-            .health-bar-container {
-                width: 120px;
-                height: 20px;
-            }
-            .color-input {
-                width: 60px;
-                font-size: 14px;
-            }
-            .main-controls {
-                width: 100%;
-            }
-            .controls {
-                width: 100%;
-            }
-        }
-        
-        @media (max-width: 480px) {
-            .health-bars {
-                flex-direction: column;
-                gap: 8px;
-            }
-            .health-color-controls {
-                flex-direction: column;
-                gap: 10px;
-            }
-            .background-color-control,
-            .frame-color-control {
-                flex-direction: column;
-                gap: 8px;
-                text-align: center;
-            }
-            button {
-                min-width: 100px;
-                padding: 14px 20px;
-            }
         }
     </style>
 </head>
@@ -279,56 +191,54 @@
                     </div>
                 </div>
             </div>
-            <canvas id="canvas" width="540" height="360"></canvas>
+            <canvas id="canvas" width="1080" height="720"></canvas>
         </div>
         
         <!-- Game Info -->
         <div class="game-info">
-            <strong>Mobile Controls:</strong> Volume Down=Pause, Volume Up=Reset, Fullscreen Button below
-        </div>
-        
-        <!-- Main Controls -->
-        <div class="main-controls">
-            <button id="resetBtn">Reset</button>
-            <button id="pauseBtn">Pause</button>
-            <button id="speedBtn">Speed: 1x</button>
-            <button id="fullscreenBtn" class="fullscreen-btn">Fullscreen</button>
+            <strong>Mobile Controls:</strong> Volume Down=Pause, Volume Up=Reset, Button=Fullscreen, 1/2/3=Speed
         </div>
         
         <!-- Background Color Control -->
         <div class="background-color-control">
-            <label for="backgroundColorText">Canvas Background:</label>
+            <label for="backgroundColorText">Canvas Background Color:</label>
             <input type="text" id="backgroundColorText" class="color-input" value="#ffffff" placeholder="#RRGGBB">
             <input type="color" id="backgroundColorPicker" class="color-picker-input" value="#ffffff">
             <button id="applyBackgroundBtn">Apply</button>
-            <button id="restoreBackgroundBtn" class="restore-btn">Restore</button>
+            <button id="restoreBackgroundBtn" class="restore-btn">Restore Previous</button>
         </div>
         
         <!-- Frame Color Control -->
         <div class="frame-color-control">
-            <label for="frameColorText">Frame Color:</label>
+            <label for="frameColorText">Collision Frame Color:</label>
             <input type="text" id="frameColorText" class="color-input" value="#00ff00" placeholder="#RRGGBB">
             <input type="color" id="frameColorPicker" class="color-picker-input" value="#00ff00">
             <button id="applyFrameBtn">Apply</button>
             <button id="resetFrameBtn">Reset Frame</button>
         </div>
         
+        <div class="controls">
+            <button id="resetBtn">Reset</button>
+            <button id="pauseBtn">Pause</button>
+            <button id="speedBtn">Speed: 1x</button>
+            <button id="fullscreenBtn" class="fullscreen-btn">Fullscreen</button>
+        </div>
         <div class="health-color-controls">
             <div class="health-color-group">
-                <label for="redHealthColor">Red Health Bar:</label>
+                <label for="redHealthColor">Red Health Bar Color:</label>
                 <input type="text" id="redHealthColor" class="color-input" value="#e74c3c" placeholder="#RRGGBB">
             </div>
             <div class="health-color-group">
-                <label for="blueHealthColor">Blue Health Bar:</label>
+                <label for="blueHealthColor">Blue Health Bar Color:</label>
                 <input type="text" id="blueHealthColor" class="color-input" value="#3498db" placeholder="#RRGGBB">
             </div>
         </div>
         <div class="color-picker">
-            <label for="redThornColor">Red Thorn Color:</label>
+            <label for="redThornColor">Red Square Thorn Color:</label>
             <input type="text" id="redThornColor" class="color-input" value="#BEBEBE" placeholder="#RRGGBB">
         </div>
         <div class="color-picker">
-            <label for="blueThornColor">Blue Thorn Color:</label>
+            <label for="blueThornColor">Blue Square Thorn Color:</label>
             <input type="text" id="blueThornColor" class="color-input" value="#BEBEBE" placeholder="#RRGGBB">
         </div>
     </div>
@@ -362,7 +272,7 @@
         
         // Fullscreen variables
         let isFullscreen = false;
-        let originalCanvasSize = { width: 540, height: 360 };
+        let originalCanvasSize = { width: 1080, height: 720 };
         let originalCanvasStyle = { width: canvas.style.width, height: canvas.style.height };
         let originalSquarePositions = [];
         let fullscreenScale = 1;
@@ -402,10 +312,10 @@
         let lastBlueHealth = -1;
         
         // Default square properties
-        const DEFAULT_SQUARE_SIZE = 60;
+        const DEFAULT_SQUARE_SIZE = 120;
         
         // Speed constant
-        const SPEED = 3;
+        const SPEED = 6;
         
         // Image loading tracking
         let loadedImages = 0;
@@ -436,28 +346,11 @@
         const KNIFE_SPAWN_INTERVAL = 8000;
         const HEAL_SPAWN_INTERVAL = 15000;
         const THORN_DURATION = 7000;
-        const POWER_UP_SIZE = 30;
+        const POWER_UP_SIZE = 60;
         
         // Power-up spawn intervals
         let knifeSpawnInterval = null;
         let healSpawnInterval = null;
-        
-        // Mobile controls
-        function setupMobileControls() {
-            // Volume button controls for mobile
-            document.addEventListener('keydown', function(event) {
-                // Volume Down (Pause)
-                if (event.code === 'VolumeDown') {
-                    event.preventDefault();
-                    pauseBtn.click();
-                }
-                // Volume Up (Reset)
-                else if (event.code === 'VolumeUp') {
-                    event.preventDefault();
-                    resetBtn.click();
-                }
-            });
-        }
         
         // Fullscreen function
         function toggleFullscreen() {
@@ -492,8 +385,6 @@
                              document.webkitFullscreenElement || 
                              document.mozFullScreenElement || 
                              document.msFullscreenElement);
-            
-            fullscreenBtn.textContent = isFullscreen ? 'Exit Fullscreen' : 'Fullscreen';
             
             if (isFullscreen) {
                 // Save original positions
@@ -865,8 +756,53 @@
         
         resetFrameBtn.addEventListener('click', resetFrame);
         
-        // Mobile Controls Setup
-        setupMobileControls();
+        // Keyboard Controls - updated for mobile
+        document.addEventListener('keydown', function(event) {
+            const key = event.key.toLowerCase();
+            
+            switch(key) {
+                case 'volumedown':
+                    event.preventDefault();
+                    pauseBtn.click();
+                    break;
+                    
+                case 'volumeup':
+                    event.preventDefault();
+                    resetBtn.click();
+                    break;
+                    
+                case '1':
+                    event.preventDefault();
+                    speedMultiplier = 1;
+                    speedBtn.textContent = 'Speed: 1x';
+                    break;
+                    
+                case '2':
+                    event.preventDefault();
+                    speedMultiplier = 2;
+                    speedBtn.textContent = 'Speed: 2x';
+                    break;
+                    
+                case '3':
+                    event.preventDefault();
+                    speedMultiplier = 3;
+                    speedBtn.textContent = 'Speed: 3x';
+                    break;
+            }
+        });
+        
+        // Add volume button controls for mobile
+        document.addEventListener('keydown', function(event) {
+            // For mobile devices, we need to listen for volume keys
+            if (event.key === 'AudioVolumeDown' || event.keyCode === 174) {
+                event.preventDefault();
+                pauseBtn.click();
+            }
+            if (event.key === 'AudioVolumeUp' || event.keyCode === 175) {
+                event.preventDefault();
+                resetBtn.click();
+            }
+        });
         
         // Function to update health bar display
         function updateHealthBar(healthBar, health, maxHealth, color) {
@@ -1055,8 +991,8 @@
             separateSquares(square1, square2);
             
             // Check if damage should be dealt
-            const damageAmount = 15 * (isFullscreen ? fullscreenScale : 1);
-            const minSize = 15 * (isFullscreen ? fullscreenScale : 1);
+            const damageAmount = 30 * (isFullscreen ? fullscreenScale : 1);
+            const minSize = 30 * (isFullscreen ? fullscreenScale : 1);
             
             if (square1.hasThorns && !square2.hasThorns) {
                 const newSize = Math.max(minSize, square2.size - damageAmount);
@@ -1194,7 +1130,7 @@
                             square.hasThorns = true;
                             square.thornExpiryTime = currentTime + THORN_DURATION;
                         } else if (powerUp.type === 'heal') {
-                            const healAmount = 15 * (isFullscreen ? fullscreenScale : 1);
+                            const healAmount = 30 * (isFullscreen ? fullscreenScale : 1);
                             const maxSize = DEFAULT_SQUARE_SIZE * (isFullscreen ? fullscreenScale : 1);
                             square.size = Math.min(maxSize, square.size + healAmount);
                         }
@@ -1372,12 +1308,12 @@
         updateHealthBar(redHealthBar, redSquareHealth, 4, redHealthColor);
         updateHealthBar(blueHealthBar, blueSquareHealth, 4, blueHealthColor);
         
-        // Event listeners for buttons
+        // Event listeners for buttons - UPDATED RESET FUNCTION
         resetBtn.addEventListener('click', function() {
             if (knifeSpawnInterval) clearInterval(knifeSpawnInterval);
             if (healSpawnInterval) clearInterval(healSpawnInterval);
             
-            squares = initializeSquares();
+            squares = initializeSquares(); // Use random positions instead of fixed ones
             powerUps = [];
             speedMultiplier = 1;
             speedBtn.textContent = 'Speed: 1x';
@@ -1407,9 +1343,11 @@
             speedMultiplier = (speedMultiplier >= 3) ? 1 : speedMultiplier + 0.5;
             this.textContent = `Speed: ${speedMultiplier}x`;
         });
-        
-        // Fullscreen button
-        fullscreenBtn.addEventListener('click', toggleFullscreen);
+
+        // Add fullscreen button event listener
+        fullscreenBtn.addEventListener('click', function() {
+            toggleFullscreen();
+        });
         
         // Color input event listeners
         redThornColorInput.addEventListener('input', function() {
