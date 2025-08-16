@@ -196,7 +196,7 @@
         
         <!-- Game Info -->
         <div class="game-info">
-            <strong>Controls:</strong> Use buttons below for Pause/Reset/Fullscreen, 1/2/3=Speed
+            <strong>Mobile Controls:</strong> Volume Down=Pause, Volume Up=Reset, Button=Fullscreen, 1/2/3=Speed
         </div>
         
         <!-- Background Color Control -->
@@ -269,6 +269,11 @@
         const frameColorPicker = document.getElementById('frameColorPicker');
         const applyFrameBtn = document.getElementById('applyFrameBtn');
         const resetFrameBtn = document.getElementById('resetFrameBtn');
+        
+        // Countdown variables
+        let countdown = 5;
+        let countdownActive = false;
+        let gameStarted = false;
         
         // Fullscreen variables
         let isFullscreen = false;
@@ -351,6 +356,26 @@
         // Power-up spawn intervals
         let knifeSpawnInterval = null;
         let healSpawnInterval = null;
+        
+        // Add countdown function
+        function startCountdown() {
+            countdownActive = true;
+            gameStarted = false;
+            countdown = 5;
+            isPaused = true; // Pause the game during countdown
+            
+            const countdownInterval = setInterval(() => {
+                countdown--;
+                
+                if (countdown <= 0) {
+                    clearInterval(countdownInterval);
+                    countdownActive = false;
+                    gameStarted = true;
+                    isPaused = false; // Resume the game after countdown
+                    pauseBtn.textContent = 'Pause';
+                }
+            }, 1000);
+        }
         
         // Fullscreen function
         function toggleFullscreen() {
@@ -761,6 +786,16 @@
             const key = event.key.toLowerCase();
             
             switch(key) {
+                case 'volumedown':
+                    event.preventDefault();
+                    pauseBtn.click();
+                    break;
+                    
+                case 'volumeup':
+                    event.preventDefault();
+                    resetBtn.click();
+                    break;
+                    
                 case '1':
                     event.preventDefault();
                     speedMultiplier = 1;
@@ -778,6 +813,19 @@
                     speedMultiplier = 3;
                     speedBtn.textContent = 'Speed: 3x';
                     break;
+            }
+        });
+        
+        // Add volume button controls for mobile
+        document.addEventListener('keydown', function(event) {
+            // For mobile devices, we need to listen for volume keys
+            if (event.key === 'AudioVolumeDown' || event.keyCode === 174) {
+                event.preventDefault();
+                pauseBtn.click();
+            }
+            if (event.key === 'AudioVolumeUp' || event.keyCode === 175) {
+                event.preventDefault();
+                resetBtn.click();
             }
         });
         
@@ -1064,9 +1112,9 @@
             }
         }
 
-        // Function to update the simulation
+        // Function to update the simulation - MODIFIED WITH COUNTDOWN
         function update() {
-            if (isPaused) return;
+            if (isPaused && !countdownActive) return;
             
             const currentTime = Date.now();
             
@@ -1075,6 +1123,30 @@
             if (canvasBackgroundColor !== '#ffffff') {
                 ctx.fillStyle = canvasBackgroundColor;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+            
+            // Draw countdown if active
+            if (countdownActive) {
+                ctx.save();
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                ctx.fillStyle = '#ffffff';
+                ctx.font = `${120 * (isFullscreen ? fullscreenScale : 1)}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+                
+                if (countdown > 0) {
+                    ctx.fillText(countdown.toString(), centerX, centerY);
+                } else {
+                    ctx.fillText('GO!', centerX, centerY);
+                }
+                
+                ctx.restore();
+                return; // Don't update game elements during countdown
             }
             
             // Draw collision frame
@@ -1274,9 +1346,10 @@
             }
         }, 3000);
 
-        // Start the game when all images are loaded
+        // Start the game when all images are loaded - MODIFIED WITH COUNTDOWN
         function startGame() {
             animate();
+            startCountdown(); // Start with countdown
             knifeSpawnInterval = setInterval(spawnKnifePowerUp, KNIFE_SPAWN_INTERVAL);
             healSpawnInterval = setInterval(spawnHealPowerUp, HEAL_SPAWN_INTERVAL);
         }
@@ -1285,17 +1358,15 @@
         updateHealthBar(redHealthBar, redSquareHealth, 4, redHealthColor);
         updateHealthBar(blueHealthBar, blueSquareHealth, 4, blueHealthColor);
         
-        // Event listeners for buttons - UPDATED RESET FUNCTION
+        // Event listeners for buttons - UPDATED RESET FUNCTION WITH COUNTDOWN
         resetBtn.addEventListener('click', function() {
             if (knifeSpawnInterval) clearInterval(knifeSpawnInterval);
             if (healSpawnInterval) clearInterval(healSpawnInterval);
             
-            squares = initializeSquares(); // Use random positions instead of fixed ones
+            squares = initializeSquares();
             powerUps = [];
             speedMultiplier = 1;
             speedBtn.textContent = 'Speed: 1x';
-            isPaused = false;
-            pauseBtn.textContent = 'Pause';
             
             redSquareHealth = 4;
             blueSquareHealth = 4;
@@ -1306,6 +1377,9 @@
             
             redParticles.clear();
             blueParticles.clear();
+            
+            // Start countdown instead of immediately starting game
+            startCountdown();
             
             knifeSpawnInterval = setInterval(spawnKnifePowerUp, KNIFE_SPAWN_INTERVAL);
             healSpawnInterval = setInterval(spawnHealPowerUp, HEAL_SPAWN_INTERVAL);
