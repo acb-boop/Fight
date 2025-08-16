@@ -196,7 +196,7 @@
         
         <!-- Game Info -->
         <div class="game-info">
-            <strong>Mobile Controls:</strong> Volume Down=Pause, Volume Up=Reset, Button=Fullscreen, 1/2/3=Speed
+            <strong>Controls:</strong> Use buttons below for Pause/Reset/Fullscreen, 1/2/3=Speed
         </div>
         
         <!-- Background Color Control -->
@@ -761,16 +761,6 @@
             const key = event.key.toLowerCase();
             
             switch(key) {
-                case 'volumedown':
-                    event.preventDefault();
-                    pauseBtn.click();
-                    break;
-                    
-                case 'volumeup':
-                    event.preventDefault();
-                    resetBtn.click();
-                    break;
-                    
                 case '1':
                     event.preventDefault();
                     speedMultiplier = 1;
@@ -788,19 +778,6 @@
                     speedMultiplier = 3;
                     speedBtn.textContent = 'Speed: 3x';
                     break;
-            }
-        });
-        
-        // Add volume button controls for mobile
-        document.addEventListener('keydown', function(event) {
-            // For mobile devices, we need to listen for volume keys
-            if (event.key === 'AudioVolumeDown' || event.keyCode === 174) {
-                event.preventDefault();
-                pauseBtn.click();
-            }
-            if (event.key === 'AudioVolumeUp' || event.keyCode === 175) {
-                event.preventDefault();
-                resetBtn.click();
             }
         });
         
