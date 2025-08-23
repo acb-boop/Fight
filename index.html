@@ -391,7 +391,7 @@
             try {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 masterGain = audioContext.createGain();
-                masterGain.gain.value = 0; // Silent during gameplay
+                masterGain.gain.value = 1; // Silent during gameplay
                 masterGain.connect(audioContext.destination);
                 
                 // Create audio destination for recording
@@ -1286,7 +1286,7 @@
         // Function to draw thorns around a square - FIXED TO CREATE CONTINUOUS RING
         function drawThorns(square) {
             const size = square.size;
-            const thornSize = size / 24; // Smaller individual thorns
+            const thornSize = size / 16; // Smaller individual thorns
             const thornCount = Math.floor(size / (thornSize * 1.5)); // Number of thorns per side
             
             ctx.fillStyle = square.isBlue ? blueThornColor : redThornColor;
