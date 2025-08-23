@@ -212,7 +212,8 @@
         
         <!-- Audio Controls -->
         <div class="audio-controls">
-            <button id="startAudioBtn">Start Audio Recording</button>
+            <button id="startAudioBtn">Start Recording</button>
+            <button id="stopAudioBtn" class="restore-btn" disabled>Stop Recording</button>
             <button id="downloadAudioBtn" class="download-btn" disabled>Download Audio</button>
         </div>
         
@@ -271,6 +272,7 @@
         const speedBtn = document.getElementById('speedBtn');
         const fullscreenBtn = document.getElementById('fullscreenBtn');
         const startAudioBtn = document.getElementById('startAudioBtn');
+        const stopAudioBtn = document.getElementById('stopAudioBtn');
         const downloadAudioBtn = document.getElementById('downloadAudioBtn');
         const redThornColorInput = document.getElementById('redThornColor');
         const blueThornColorInput = document.getElementById('blueThornColor');
@@ -406,19 +408,12 @@
                     }
                 };
                 
-                mediaRecorder.onstop = () => {
-                    downloadAudioBtn.disabled = false;
-                };
-                
                 // Load audio buffers (create synthetic sounds since we can't load files)
                 await createAudioSources();
                 
                 // Start recording
                 mediaRecorder.start();
                 isRecording = true;
-                
-                startAudioBtn.textContent = 'Recording...';
-                startAudioBtn.disabled = true;
                 
                 return true;
             } catch (error) {
@@ -516,13 +511,6 @@
                     source.start();
                 }
             });
-        }
-        
-        function stopRecording() {
-            if (mediaRecorder && isRecording) {
-                mediaRecorder.stop();
-                isRecording = false;
-            }
         }
         
         function downloadAudio() {
@@ -968,14 +956,39 @@
             const success = await initializeAudio();
             if (success) {
                 console.log('Audio recording started');
+                startAudioBtn.disabled = true;
+                stopAudioBtn.disabled = false;
+                startAudioBtn.textContent = 'Recording...';
             } else {
                 alert('Failed to initialize audio recording');
             }
         });
-        
+
+        stopAudioBtn.addEventListener('click', function() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                stopAudioBtn.disabled = true;
+                downloadAudioBtn.disabled = false;
+                stopAudioBtn.textContent = 'Stopped';
+                console.log('Recording stopped, download available');
+            }
+        });
+
         downloadAudioBtn.addEventListener('click', function() {
-            stopRecording();
-            setTimeout(downloadAudio, 100); // Small delay to ensure recording stops
+            console.log('Attempting download, chunks:', audioChunks.length);
+            if (audioChunks.length === 0) {
+                alert('No audio recorded. Please record some audio first.');
+                return;
+            }
+            
+            downloadAudio();
+            
+            // Reset buttons after download
+            startAudioBtn.disabled = false;
+            startAudioBtn.textContent = 'Start Recording';
+            stopAudioBtn.textContent = 'Stop Recording';
+            downloadAudioBtn.disabled = true;
         });
         
         // Keyboard Controls - updated for mobile
@@ -1273,7 +1286,7 @@
         // Function to draw thorns around a square - FIXED TO CREATE CONTINUOUS RING
         function drawThorns(square) {
             const size = square.size;
-            const thornSize = size / 16; // Smaller individual thorns
+            const thornSize = size / 24; // Smaller individual thorns
             const thornCount = Math.floor(size / (thornSize * 1.5)); // Number of thorns per side
             
             ctx.fillStyle = square.isBlue ? blueThornColor : redThornColor;
