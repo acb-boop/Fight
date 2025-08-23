@@ -212,8 +212,7 @@
         
         <!-- Audio Controls -->
         <div class="audio-controls">
-            <button id="startAudioBtn">Start Recording</button>
-            <button id="stopAudioBtn" class="restore-btn" disabled>Stop Recording</button>
+            <button id="startAudioBtn">Start Audio Tracking</button>
             <button id="downloadAudioBtn" class="download-btn" disabled>Download Audio</button>
         </div>
         
@@ -272,7 +271,6 @@
         const speedBtn = document.getElementById('speedBtn');
         const fullscreenBtn = document.getElementById('fullscreenBtn');
         const startAudioBtn = document.getElementById('startAudioBtn');
-        const stopAudioBtn = document.getElementById('stopAudioBtn');
         const downloadAudioBtn = document.getElementById('downloadAudioBtn');
         const redThornColorInput = document.getElementById('redThornColor');
         const blueThornColorInput = document.getElementById('blueThornColor');
@@ -293,11 +291,10 @@
         
         // Audio variables
         let audioContext = null;
-        let mediaRecorder = null;
-        let audioChunks = [];
-        let isRecording = false;
-        let masterGain = null;
-        let audioSources = {};
+        let audioBuffers = {};
+        let audioEvents = [];
+        let simulationStartTime = 0;
+        let isTrackingAudio = false;
         
         // Countdown variables
         let countdown = 5;
@@ -390,31 +387,26 @@
         async function initializeAudio() {
             try {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                masterGain = audioContext.createGain();
-                masterGain.gain.value = 0; // Silent during gameplay
-                masterGain.connect(audioContext.destination);
                 
-                // Create audio destination for recording
-                const dest = audioContext.createMediaStreamDestination();
-                masterGain.connect(dest);
+                // Load actual sound files into buffers
+                const soundFiles = ['blue.wav', 'red.wav', 'heal.wav', 'knife.wav', 'hit.wav'];
                 
-                // Setup media recorder
-                mediaRecorder = new MediaRecorder(dest.stream);
-                audioChunks = [];
-                
-                mediaRecorder.ondataavailable = (event) => {
-                    if (event.data.size > 0) {
-                        audioChunks.push(event.data);
+                for (const filename of soundFiles) {
+                    try {
+                        const response = await fetch(filename);
+                        const arrayBuffer = await response.arrayBuffer();
+                        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                        const soundName = filename.replace('.wav', '');
+                        audioBuffers[soundName] = audioBuffer;
+                        console.log(`Loaded ${filename}`);
+                    } catch (error) {
+                        console.warn(`Failed to load ${filename}:`, error);
                     }
-                };
+                }
                 
-                // Load actual audio files
-                await loadAudioFiles();
-                
-                // Start recording
-                mediaRecorder.start();
-                isRecording = true;
-                
+                simulationStartTime = Date.now();
+                audioEvents = [];
+                isTrackingAudio = true;
                 return true;
             } catch (error) {
                 console.error('Audio initialization failed:', error);
@@ -422,61 +414,98 @@
             }
         }
         
-        async function loadAudioFiles() {
-            try {
-                // Load the actual WAV files
-                const audioFiles = {
-                    blue: 'blue.wav',
-                    red: 'red.wav', 
-                    heal: 'heal.wav',
-                    knife: 'knife.wav',
-                    hit: 'hit.wav'
-                };
-                
-                for (const [key, filename] of Object.entries(audioFiles)) {
-                    try {
-                        const response = await fetch(filename);
-                        const arrayBuffer = await response.arrayBuffer();
-                        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-                        audioSources[key] = audioBuffer;
-                    } catch (error) {
-                        console.warn(`Failed to load ${filename}:`, error);
-                        // Create a silent buffer as fallback
-                        audioSources[key] = audioContext.createBuffer(1, audioContext.sampleRate * 0.1, audioContext.sampleRate);
-                    }
-                }
-            } catch (error) {
-                console.error('Failed to load audio files:', error);
-            }
-        }
-        
         function playSound(soundName) {
-            if (!audioContext || !audioSources[soundName] || !isRecording) return;
+            if (!isTrackingAudio || !audioBuffers[soundName]) return;
             
-            const source = audioContext.createBufferSource();
-            source.buffer = audioSources[soundName];
-            source.connect(masterGain);
-            source.start();
+            const timestamp = Date.now() - simulationStartTime;
+            audioEvents.push({
+                sound: soundName,
+                time: timestamp / 1000 // convert to seconds
+            });
         }
         
         function playSoundsCombined(soundNames) {
-            if (!audioContext || !isRecording) return;
-            
             soundNames.forEach(soundName => {
-                if (audioSources[soundName]) {
-                    const source = audioContext.createBufferSource();
-                    source.buffer = audioSources[soundName];
-                    source.connect(masterGain);
-                    source.start();
+                if (audioBuffers[soundName]) {
+                    playSound(soundName);
                 }
             });
         }
         
-        function downloadAudio() {
-            if (audioChunks.length === 0) return;
+        // Convert AudioBuffer to WAV
+        function audioBufferToWav(buffer) {
+            const length = buffer.length;
+            const sampleRate = buffer.sampleRate;
+            const arrayBuffer = new ArrayBuffer(44 + length * 2);
+            const view = new DataView(arrayBuffer);
+            const channelData = buffer.getChannelData(0);
             
-            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-            const url = URL.createObjectURL(audioBlob);
+            // WAV header
+            const writeString = (offset, string) => {
+                for (let i = 0; i < string.length; i++) {
+                    view.setUint8(offset + i, string.charCodeAt(i));
+                }
+            };
+            
+            writeString(0, 'RIFF');
+            view.setUint32(4, 36 + length * 2, true);
+            writeString(8, 'WAVE');
+            writeString(12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, 1, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * 2, true);
+            view.setUint16(32, 2, true);
+            view.setUint16(34, 16, true);
+            writeString(36, 'data');
+            view.setUint32(40, length * 2, true);
+            
+            // Convert audio data
+            let offset = 44;
+            for (let i = 0; i < length; i++) {
+                const sample = Math.max(-1, Math.min(1, channelData[i]));
+                view.setInt16(offset, sample * 0x7FFF, true);
+                offset += 2;
+            }
+            
+            return new Blob([arrayBuffer], { type: 'audio/wav' });
+        }
+        
+        async function downloadAudio() {
+            if (audioEvents.length === 0) {
+                alert('No audio events recorded. Start audio tracking and play the game first.');
+                return;
+            }
+            
+            console.log(`Generating audio from ${audioEvents.length} events`);
+            
+            // Create a longer buffer to accommodate all events
+            const maxTime = Math.max(...audioEvents.map(event => event.time)) + 2;
+            const sampleRate = audioContext.sampleRate;
+            const totalSamples = Math.ceil(maxTime * sampleRate);
+            
+            // Create the final audio buffer
+            const finalBuffer = audioContext.createBuffer(1, totalSamples, sampleRate);
+            const channelData = finalBuffer.getChannelData(0);
+            
+            // Mix all sound events into the final buffer
+            for (const event of audioEvents) {
+                const soundBuffer = audioBuffers[event.sound];
+                if (!soundBuffer) continue;
+                
+                const startSample = Math.floor(event.time * sampleRate);
+                const soundData = soundBuffer.getChannelData(0);
+                
+                // Copy sound data into the final buffer at the correct time
+                for (let i = 0; i < soundData.length && (startSample + i) < totalSamples; i++) {
+                    channelData[startSample + i] += soundData[i] * 0.5; // Mix at half volume to prevent clipping
+                }
+            }
+            
+            // Convert to WAV and download
+            const wavBlob = audioBufferToWav(finalBuffer);
+            const url = URL.createObjectURL(wavBlob);
             const a = document.createElement('a');
             a.href = url;
             a.download = 'game-audio.wav';
@@ -484,6 +513,8 @@
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
+            
+            console.log('Audio file generated and download initiated');
         }
         
         // Add countdown function
@@ -914,40 +945,17 @@
         startAudioBtn.addEventListener('click', async function() {
             const success = await initializeAudio();
             if (success) {
-                console.log('Audio recording started');
+                console.log('Audio tracking started');
                 startAudioBtn.disabled = true;
-                stopAudioBtn.disabled = false;
-                startAudioBtn.textContent = 'Recording...';
-            } else {
-                alert('Failed to initialize audio recording');
-            }
-        });
-
-        stopAudioBtn.addEventListener('click', function() {
-            if (mediaRecorder && isRecording) {
-                mediaRecorder.stop();
-                isRecording = false;
-                stopAudioBtn.disabled = true;
                 downloadAudioBtn.disabled = false;
-                stopAudioBtn.textContent = 'Stopped';
-                console.log('Recording stopped, download available');
+                startAudioBtn.textContent = 'Tracking...';
+            } else {
+                alert('Failed to initialize audio tracking');
             }
         });
 
         downloadAudioBtn.addEventListener('click', function() {
-            console.log('Attempting download, chunks:', audioChunks.length);
-            if (audioChunks.length === 0) {
-                alert('No audio recorded. Please record some audio first.');
-                return;
-            }
-            
             downloadAudio();
-            
-            // Reset buttons after download
-            startAudioBtn.disabled = false;
-            startAudioBtn.textContent = 'Start Recording';
-            stopAudioBtn.textContent = 'Stop Recording';
-            downloadAudioBtn.disabled = true;
         });
         
         // Keyboard Controls - updated for mobile
@@ -1242,7 +1250,7 @@
             }
         }
         
-        // Function to draw thorns around a square - CHANGED FROM /24 TO /16
+        // Function to draw thorns around a square - FIXED TO /16
         function drawThorns(square) {
             const size = square.size;
             const thornSize = size / 16; // Changed from size / 24 to size / 16
@@ -1580,6 +1588,12 @@
             
             redParticles.clear();
             blueParticles.clear();
+            
+            // Reset audio tracking
+            if (isTrackingAudio) {
+                simulationStartTime = Date.now();
+                audioEvents = [];
+            }
             
             // Start countdown instead of immediately starting game
             startCountdown();
