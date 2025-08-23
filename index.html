@@ -1064,50 +1064,54 @@
             }
         }
         
-        // Function to draw thorns around a square - FIXED VERSION
+        // Function to draw thorns around a square - FIXED TO CREATE CONTINUOUS RING
         function drawThorns(square) {
             const size = square.size;
-            const thornSize = size / 16;
-            const thornSpacing = Math.max(thornSize * 3, 20 * (isFullscreen ? fullscreenScale : 1)); // Better spacing
+            const thornSize = size / 24; // Smaller individual thorns
+            const thornCount = Math.floor(size / (thornSize * 1.5)); // Number of thorns per side
             
             ctx.fillStyle = square.isBlue ? blueThornColor : redThornColor;
             
             // Top side
-            for (let i = 0; i < size; i += thornSpacing) {
+            for (let i = 0; i < thornCount; i++) {
+                const x = square.x + (i * size / thornCount);
                 ctx.beginPath();
-                ctx.moveTo(square.x + i, square.y);
-                ctx.lineTo(square.x + i + thornSize, square.y - thornSize);
-                ctx.lineTo(square.x + i + thornSize * 2, square.y);
+                ctx.moveTo(x, square.y);
+                ctx.lineTo(x + thornSize, square.y - thornSize);
+                ctx.lineTo(x + (size / thornCount), square.y);
                 ctx.closePath();
                 ctx.fill();
             }
             
             // Bottom side
-            for (let i = 0; i < size; i += thornSpacing) {
+            for (let i = 0; i < thornCount; i++) {
+                const x = square.x + (i * size / thornCount);
                 ctx.beginPath();
-                ctx.moveTo(square.x + i, square.y + size);
-                ctx.lineTo(square.x + i + thornSize, square.y + size + thornSize);
-                ctx.lineTo(square.x + i + thornSize * 2, square.y + size);
+                ctx.moveTo(x, square.y + size);
+                ctx.lineTo(x + thornSize, square.y + size + thornSize);
+                ctx.lineTo(x + (size / thornCount), square.y + size);
                 ctx.closePath();
                 ctx.fill();
             }
             
             // Left side
-            for (let i = 0; i < size; i += thornSpacing) {
+            for (let i = 0; i < thornCount; i++) {
+                const y = square.y + (i * size / thornCount);
                 ctx.beginPath();
-                ctx.moveTo(square.x, square.y + i);
-                ctx.lineTo(square.x - thornSize, square.y + i + thornSize);
-                ctx.lineTo(square.x, square.y + i + thornSize * 2);
+                ctx.moveTo(square.x, y);
+                ctx.lineTo(square.x - thornSize, y + thornSize);
+                ctx.lineTo(square.x, y + (size / thornCount));
                 ctx.closePath();
                 ctx.fill();
             }
             
             // Right side
-            for (let i = 0; i < size; i += thornSpacing) {
+            for (let i = 0; i < thornCount; i++) {
+                const y = square.y + (i * size / thornCount);
                 ctx.beginPath();
-                ctx.moveTo(square.x + size, square.y + i);
-                ctx.lineTo(square.x + size + thornSize, square.y + i + thornSize);
-                ctx.lineTo(square.x + size, square.y + i + thornSize * 2);
+                ctx.moveTo(square.x + size, y);
+                ctx.lineTo(square.x + size + thornSize, y + thornSize);
+                ctx.lineTo(square.x + size, y + (size / thornCount));
                 ctx.closePath();
                 ctx.fill();
             }
@@ -1429,4 +1433,4 @@
         });
     </script>
 </body>
-</html>
+</html>if (square.isBlue && blueImageReady) {
