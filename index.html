@@ -427,19 +427,19 @@
             const sampleRate = audioContext.sampleRate;
             
             // Blue square sound (higher pitched beep)
-            audioSources.blue = createBeepBuffer(440, 0.2, sampleRate);
+            audioSources.blue = blue.wav;
             
             // Red square sound (lower pitched beep)
-            audioSources.red = createBeepBuffer(220, 0.2, sampleRate);
+            audioSources.red = red.wav;
             
             // Heal sound (ascending chime)
-            audioSources.heal = createChimeBuffer([523, 659, 784], 0.3, sampleRate);
+            audioSources.heal = heal.wav;
             
             // Knife sound (sharp click)
-            audioSources.knife = createClickBuffer(0.1, sampleRate);
+            audioSources.knife = knife.wav;
             
             // Hit sound (impact noise)
-            audioSources.hit = createNoiseBuffer(0.15, sampleRate);
+            audioSources.hit = hit.wav;
         }
         
         function createBeepBuffer(frequency, duration, sampleRate) {
