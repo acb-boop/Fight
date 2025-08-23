@@ -100,6 +100,12 @@
         .fullscreen-btn:hover {
             background-color: #2980b9;
         }
+        .download-btn {
+            background-color: #e67e22;
+        }
+        .download-btn:hover {
+            background-color: #d35400;
+        }
         .color-picker {
             display: flex;
             align-items: center;
@@ -166,6 +172,11 @@
             border-radius: 8px;
             border: 2px solid #ccc;
         }
+        .audio-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -197,6 +208,12 @@
         <!-- Game Info -->
         <div class="game-info">
             <strong>Mobile Controls:</strong> Volume Down=Pause, Volume Up=Reset, Button=Fullscreen, 1/2/3=Speed
+        </div>
+        
+        <!-- Audio Controls -->
+        <div class="audio-controls">
+            <button id="startAudioBtn">Start Audio Recording</button>
+            <button id="downloadAudioBtn" class="download-btn" disabled>Download Audio</button>
         </div>
         
         <!-- Background Color Control -->
@@ -253,6 +270,8 @@
         const pauseBtn = document.getElementById('pauseBtn');
         const speedBtn = document.getElementById('speedBtn');
         const fullscreenBtn = document.getElementById('fullscreenBtn');
+        const startAudioBtn = document.getElementById('startAudioBtn');
+        const downloadAudioBtn = document.getElementById('downloadAudioBtn');
         const redThornColorInput = document.getElementById('redThornColor');
         const blueThornColorInput = document.getElementById('blueThornColor');
         const redHealthColorInput = document.getElementById('redHealthColor');
@@ -269,6 +288,14 @@
         const frameColorPicker = document.getElementById('frameColorPicker');
         const applyFrameBtn = document.getElementById('applyFrameBtn');
         const resetFrameBtn = document.getElementById('resetFrameBtn');
+        
+        // Audio variables
+        let audioContext = null;
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let isRecording = false;
+        let masterGain = null;
+        let audioSources = {};
         
         // Countdown variables
         let countdown = 5;
@@ -356,6 +383,161 @@
         // Power-up spawn intervals
         let knifeSpawnInterval = null;
         let healSpawnInterval = null;
+        
+        // Audio initialization and management
+        async function initializeAudio() {
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                masterGain = audioContext.createGain();
+                masterGain.gain.value = 0; // Silent during gameplay
+                masterGain.connect(audioContext.destination);
+                
+                // Create audio destination for recording
+                const dest = audioContext.createMediaStreamDestination();
+                masterGain.connect(dest);
+                
+                // Setup media recorder
+                mediaRecorder = new MediaRecorder(dest.stream);
+                audioChunks = [];
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        audioChunks.push(event.data);
+                    }
+                };
+                
+                mediaRecorder.onstop = () => {
+                    downloadAudioBtn.disabled = false;
+                };
+                
+                // Load audio buffers (create synthetic sounds since we can't load files)
+                await createAudioSources();
+                
+                // Start recording
+                mediaRecorder.start();
+                isRecording = true;
+                
+                startAudioBtn.textContent = 'Recording...';
+                startAudioBtn.disabled = true;
+                
+                return true;
+            } catch (error) {
+                console.error('Audio initialization failed:', error);
+                return false;
+            }
+        }
+        
+        async function createAudioSources() {
+            // Create synthetic audio buffers for different sound effects
+            const sampleRate = audioContext.sampleRate;
+            
+            // Blue square sound (higher pitched beep)
+            audioSources.blue = createBeepBuffer(440, 0.2, sampleRate);
+            
+            // Red square sound (lower pitched beep)
+            audioSources.red = createBeepBuffer(220, 0.2, sampleRate);
+            
+            // Heal sound (ascending chime)
+            audioSources.heal = createChimeBuffer([523, 659, 784], 0.3, sampleRate);
+            
+            // Knife sound (sharp click)
+            audioSources.knife = createClickBuffer(0.1, sampleRate);
+            
+            // Hit sound (impact noise)
+            audioSources.hit = createNoiseBuffer(0.15, sampleRate);
+        }
+        
+        function createBeepBuffer(frequency, duration, sampleRate) {
+            const buffer = audioContext.createBuffer(1, duration * sampleRate, sampleRate);
+            const data = buffer.getChannelData(0);
+            
+            for (let i = 0; i < data.length; i++) {
+                data[i] = Math.sin(2 * Math.PI * frequency * i / sampleRate) * 
+                         Math.exp(-i / (sampleRate * 0.1)); // Decay envelope
+            }
+            
+            return buffer;
+        }
+        
+        function createChimeBuffer(frequencies, duration, sampleRate) {
+            const buffer = audioContext.createBuffer(1, duration * sampleRate, sampleRate);
+            const data = buffer.getChannelData(0);
+            
+            for (let i = 0; i < data.length; i++) {
+                let sample = 0;
+                for (let freq of frequencies) {
+                    sample += Math.sin(2 * Math.PI * freq * i / sampleRate) / frequencies.length;
+                }
+                data[i] = sample * Math.exp(-i / (sampleRate * 0.2));
+            }
+            
+            return buffer;
+        }
+        
+        function createClickBuffer(duration, sampleRate) {
+            const buffer = audioContext.createBuffer(1, duration * sampleRate, sampleRate);
+            const data = buffer.getChannelData(0);
+            
+            for (let i = 0; i < data.length; i++) {
+                data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (sampleRate * 0.02));
+            }
+            
+            return buffer;
+        }
+        
+        function createNoiseBuffer(duration, sampleRate) {
+            const buffer = audioContext.createBuffer(1, duration * sampleRate, sampleRate);
+            const data = buffer.getChannelData(0);
+            
+            for (let i = 0; i < data.length; i++) {
+                data[i] = (Math.random() * 2 - 1) * 0.3 * Math.exp(-i / (sampleRate * 0.05));
+            }
+            
+            return buffer;
+        }
+        
+        function playSound(soundName) {
+            if (!audioContext || !audioSources[soundName] || !isRecording) return;
+            
+            const source = audioContext.createBufferSource();
+            source.buffer = audioSources[soundName];
+            source.connect(masterGain);
+            source.start();
+        }
+        
+        function playSoundsCombined(soundNames) {
+            if (!audioContext || !isRecording) return;
+            
+            soundNames.forEach(soundName => {
+                if (audioSources[soundName]) {
+                    const source = audioContext.createBufferSource();
+                    source.buffer = audioSources[soundName];
+                    source.connect(masterGain);
+                    source.start();
+                }
+            });
+        }
+        
+        function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+            }
+        }
+        
+        function downloadAudio() {
+            if (audioChunks.length === 0) return;
+            
+            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+            const url = URL.createObjectURL(audioBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'game-audio.wav';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
         
         // Add countdown function
         function startCountdown() {
@@ -781,6 +963,21 @@
         
         resetFrameBtn.addEventListener('click', resetFrame);
         
+        // Audio control event listeners
+        startAudioBtn.addEventListener('click', async function() {
+            const success = await initializeAudio();
+            if (success) {
+                console.log('Audio recording started');
+            } else {
+                alert('Failed to initialize audio recording');
+            }
+        });
+        
+        downloadAudioBtn.addEventListener('click', function() {
+            stopRecording();
+            setTimeout(downloadAudio, 100); // Small delay to ensure recording stops
+        });
+        
         // Keyboard Controls - updated for mobile
         document.addEventListener('keydown', function(event) {
             const key = event.key.toLowerCase();
@@ -1022,6 +1219,9 @@
             if (square1.hasThorns && !square2.hasThorns) {
                 const newSize = Math.max(minSize, square2.size - damageAmount);
                 
+                // Play hit sound
+                playSound('hit');
+                
                 if (square2.size <= minSize) {
                     square2.size = 0;
                     const centerX = square2.x + square2.size / 2;
@@ -1043,6 +1243,9 @@
             } else if (square2.hasThorns && !square1.hasThorns) {
                 const newSize = Math.max(minSize, square1.size - damageAmount);
                 
+                // Play hit sound
+                playSound('hit');
+                
                 if (square1.size <= minSize) {
                     square1.size = 0;
                     const centerX = square1.x + square1.size / 2;
@@ -1061,13 +1264,16 @@
                 }
                 
                 squares.forEach(sq => sq.hasThorns = false);
+            } else {
+                // No thorns - play both blue and red sounds
+                playSoundsCombined(['blue', 'red']);
             }
         }
         
         // Function to draw thorns around a square - FIXED TO CREATE CONTINUOUS RING
         function drawThorns(square) {
             const size = square.size;
-            const thornSize = size / 24; // Smaller individual thorns
+            const thornSize = size / 16; // Smaller individual thorns
             const thornCount = Math.floor(size / (thornSize * 1.5)); // Number of thorns per side
             
             ctx.fillStyle = square.isBlue ? blueThornColor : redThornColor;
@@ -1117,7 +1323,7 @@
             }
         }
 
-        // Function to update the simulation - MODIFIED WITH COUNTDOWN
+        // Function to update the simulation - MODIFIED WITH COUNTDOWN AND AUDIO
         function update() {
             if (isPaused && !countdownActive) return;
             
@@ -1183,10 +1389,16 @@
                             
                             square.hasThorns = true;
                             square.thornExpiryTime = currentTime + THORN_DURATION;
+                            
+                            // Play knife sound
+                            playSound('knife');
                         } else if (powerUp.type === 'heal') {
                             const healAmount = 30 * (isFullscreen ? fullscreenScale : 1);
                             const maxSize = DEFAULT_SQUARE_SIZE * (isFullscreen ? fullscreenScale : 1);
                             square.size = Math.min(maxSize, square.size + healAmount);
+                            
+                            // Play heal sound
+                            playSound('heal');
                         }
                         
                         powerUpCollected = true;
@@ -1219,6 +1431,13 @@
                     square.vx *= -1;
                     shrinkFrame();
                     
+                    // Play border hit sound
+                    if (square.isBlue) {
+                        playSound('blue');
+                    } else {
+                        playSound('red');
+                    }
+                    
                     if (square.direction === 0) square.direction = 1;
                     else if (square.direction === 1) square.direction = 0;
                     else if (square.direction === 2) square.direction = 3;
@@ -1231,6 +1450,13 @@
                 if (square.y <= frameBounds.top || square.y + square.size >= frameBounds.bottom) {
                     square.vy *= -1;
                     shrinkFrame();
+                    
+                    // Play border hit sound
+                    if (square.isBlue) {
+                        playSound('blue');
+                    } else {
+                        playSound('red');
+                    }
                     
                     if (square.direction === 0) square.direction = 3;
                     else if (square.direction === 1) square.direction = 2;
@@ -1433,4 +1659,4 @@
         });
     </script>
 </body>
-</html>if (square.isBlue && blueImageReady) {
+</html>
