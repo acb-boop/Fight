@@ -391,7 +391,7 @@
             try {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 masterGain = audioContext.createGain();
-                masterGain.gain.value = 1; // Silent during gameplay
+                masterGain.gain.value = 0; // Silent during gameplay
                 masterGain.connect(audioContext.destination);
                 
                 // Create audio destination for recording
@@ -408,8 +408,8 @@
                     }
                 };
                 
-                // Load audio buffers (create synthetic sounds since we can't load files)
-                await createAudioSources();
+                // Load actual audio files
+                await loadAudioFiles();
                 
                 // Start recording
                 mediaRecorder.start();
@@ -422,73 +422,32 @@
             }
         }
         
-        async function createAudioSources() {
-            // Create synthetic audio buffers for different sound effects
-            const sampleRate = audioContext.sampleRate;
-            
-            // Blue square sound (higher pitched beep)
-            audioSources.blue = blue.wav;
-            
-            // Red square sound (lower pitched beep)
-            audioSources.red = red.wav;
-            
-            // Heal sound (ascending chime)
-            audioSources.heal = heal.wav;
-            
-            // Knife sound (sharp click)
-            audioSources.knife = knife.wav;
-            
-            // Hit sound (impact noise)
-            audioSources.hit = hit.wav;
-        }
-        
-        function createBeepBuffer(frequency, duration, sampleRate) {
-            const buffer = audioContext.createBuffer(1, duration * sampleRate, sampleRate);
-            const data = buffer.getChannelData(0);
-            
-            for (let i = 0; i < data.length; i++) {
-                data[i] = Math.sin(2 * Math.PI * frequency * i / sampleRate) * 
-                         Math.exp(-i / (sampleRate * 0.1)); // Decay envelope
-            }
-            
-            return buffer;
-        }
-        
-        function createChimeBuffer(frequencies, duration, sampleRate) {
-            const buffer = audioContext.createBuffer(1, duration * sampleRate, sampleRate);
-            const data = buffer.getChannelData(0);
-            
-            for (let i = 0; i < data.length; i++) {
-                let sample = 0;
-                for (let freq of frequencies) {
-                    sample += Math.sin(2 * Math.PI * freq * i / sampleRate) / frequencies.length;
+        async function loadAudioFiles() {
+            try {
+                // Load the actual WAV files
+                const audioFiles = {
+                    blue: 'blue.wav',
+                    red: 'red.wav', 
+                    heal: 'heal.wav',
+                    knife: 'knife.wav',
+                    hit: 'hit.wav'
+                };
+                
+                for (const [key, filename] of Object.entries(audioFiles)) {
+                    try {
+                        const response = await fetch(filename);
+                        const arrayBuffer = await response.arrayBuffer();
+                        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                        audioSources[key] = audioBuffer;
+                    } catch (error) {
+                        console.warn(`Failed to load ${filename}:`, error);
+                        // Create a silent buffer as fallback
+                        audioSources[key] = audioContext.createBuffer(1, audioContext.sampleRate * 0.1, audioContext.sampleRate);
+                    }
                 }
-                data[i] = sample * Math.exp(-i / (sampleRate * 0.2));
+            } catch (error) {
+                console.error('Failed to load audio files:', error);
             }
-            
-            return buffer;
-        }
-        
-        function createClickBuffer(duration, sampleRate) {
-            const buffer = audioContext.createBuffer(1, duration * sampleRate, sampleRate);
-            const data = buffer.getChannelData(0);
-            
-            for (let i = 0; i < data.length; i++) {
-                data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (sampleRate * 0.02));
-            }
-            
-            return buffer;
-        }
-        
-        function createNoiseBuffer(duration, sampleRate) {
-            const buffer = audioContext.createBuffer(1, duration * sampleRate, sampleRate);
-            const data = buffer.getChannelData(0);
-            
-            for (let i = 0; i < data.length; i++) {
-                data[i] = (Math.random() * 2 - 1) * 0.3 * Math.exp(-i / (sampleRate * 0.05));
-            }
-            
-            return buffer;
         }
         
         function playSound(soundName) {
@@ -1283,10 +1242,10 @@
             }
         }
         
-        // Function to draw thorns around a square - FIXED TO CREATE CONTINUOUS RING
+        // Function to draw thorns around a square - CHANGED FROM /24 TO /16
         function drawThorns(square) {
             const size = square.size;
-            const thornSize = size / 16; // Smaller individual thorns
+            const thornSize = size / 16; // Changed from size / 24 to size / 16
             const thornCount = Math.floor(size / (thornSize * 1.5)); // Number of thorns per side
             
             ctx.fillStyle = square.isBlue ? blueThornColor : redThornColor;
