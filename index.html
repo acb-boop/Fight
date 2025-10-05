@@ -66,6 +66,10 @@
         canvas:fullscreen {
             object-fit: contain;
         }
+        #healthBarCanvas {
+            border: 2px solid #666;
+            margin-top: 20px;
+        }
         .controls {
             display: flex;
             gap: 15px;
@@ -105,6 +109,12 @@
         }
         .download-btn:hover {
             background-color: #d35400;
+        }
+        .recording-btn {
+            background-color: #e74c3c;
+        }
+        .recording-btn:hover {
+            background-color: #c0392b;
         }
         .color-picker {
             display: flex;
@@ -177,6 +187,33 @@
             gap: 10px;
             margin-top: 10px;
         }
+        .health-bar-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+        }
+        .health-bar-customization {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .video-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .recording-indicator {
+            color: #e74c3c;
+            font-weight: bold;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
@@ -205,18 +242,15 @@
             <canvas id="canvas" width="1080" height="720"></canvas>
         </div>
         
-        <!-- Game Info -->
         <div class="game-info">
             <strong>Mobile Controls:</strong> Volume Down=Pause, Volume Up=Reset, Button=Fullscreen, 1/2/3=Speed
         </div>
         
-        <!-- Audio Controls -->
         <div class="audio-controls">
             <button id="startAudioBtn">Start Audio Tracking</button>
             <button id="downloadAudioBtn" class="download-btn" disabled>Download Audio</button>
         </div>
         
-        <!-- Background Color Control -->
         <div class="background-color-control">
             <label for="backgroundColorText">Canvas Background Color:</label>
             <input type="text" id="backgroundColorText" class="color-input" value="#ffffff" placeholder="#RRGGBB">
@@ -225,7 +259,6 @@
             <button id="restoreBackgroundBtn" class="restore-btn">Restore Previous</button>
         </div>
         
-        <!-- Frame Color Control -->
         <div class="frame-color-control">
             <label for="frameColorText">Collision Frame Color:</label>
             <input type="text" id="frameColorText" class="color-input" value="#00ff00" placeholder="#RRGGBB">
@@ -258,50 +291,106 @@
             <label for="blueThornColor">Blue Square Thorn Color:</label>
             <input type="text" id="blueThornColor" class="color-input" value="#BEBEBE" placeholder="#RRGGBB">
         </div>
+
+        <div class="health-bar-section">
+            <h3>Standalone Health Bars (Downloadable)</h3>
+            <canvas id="healthBarCanvas" width="800" height="200"></canvas>
+            <div class="health-bar-customization">
+                <div class="health-color-group">
+                    <label for="standaloneRedColor">Red Bar Color:</label>
+                    <input type="text" id="standaloneRedColor" class="color-input" value="#e74c3c" placeholder="#RRGGBB">
+                    <input type="color" id="standaloneRedPicker" class="color-picker-input" value="#e74c3c">
+                </div>
+                <div class="health-color-group">
+                    <label for="standaloneBlueColor">Blue Bar Color:</label>
+                    <input type="text" id="standaloneBlueColor" class="color-input" value="#3498db" placeholder="#RRGGBB">
+                    <input type="color" id="standaloneBluePicker" class="color-picker-input" value="#3498db">
+                </div>
+                <div class="health-color-group">
+                    <label for="standaloneBorderColor">Border Color:</label>
+                    <input type="text" id="standaloneBorderColor" class="color-input" value="#333333" placeholder="#RRGGBB">
+                    <input type="color" id="standaloneBorderPicker" class="color-picker-input" value="#333333">
+                </div>
+                <div class="health-color-group">
+                    <label for="standaloneEmptyColor">Empty Segment Color:</label>
+                    <input type="text" id="standaloneEmptyColor" class="color-input" value="#dddddd" placeholder="#RRGGBB">
+                    <input type="color" id="standaloneEmptyPicker" class="color-picker-input" value="#dddddd">
+                </div>
+            </div>
+            <div class="video-controls">
+                <button id="startVideoBtn" class="recording-btn">Start Recording</button>
+                <button id="stopVideoBtn" class="recording-btn" disabled>Stop Recording</button>
+                <button id="downloadVideoBtn" class="download-btn" disabled>Download Video</button>
+                <button id="downloadHealthBarsBtn" class="download-btn">Download Image (PNG)</button>
+            </div>
+            <div id="recordingStatus"></div>
+        </div>
     </div>
 
     <script>
-        // Get the canvas and its context
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         
-        // Buttons
+        const healthBarCanvas = document.getElementById('healthBarCanvas');
+        const healthBarCtx = healthBarCanvas.getContext('2d');
+        
         const resetBtn = document.getElementById('resetBtn');
         const pauseBtn = document.getElementById('pauseBtn');
         const speedBtn = document.getElementById('speedBtn');
         const fullscreenBtn = document.getElementById('fullscreenBtn');
         const startAudioBtn = document.getElementById('startAudioBtn');
         const downloadAudioBtn = document.getElementById('downloadAudioBtn');
+        const downloadHealthBarsBtn = document.getElementById('downloadHealthBarsBtn');
+        const startVideoBtn = document.getElementById('startVideoBtn');
+        const stopVideoBtn = document.getElementById('stopVideoBtn');
+        const downloadVideoBtn = document.getElementById('downloadVideoBtn');
+        const recordingStatus = document.getElementById('recordingStatus');
         const redThornColorInput = document.getElementById('redThornColor');
         const blueThornColorInput = document.getElementById('blueThornColor');
         const redHealthColorInput = document.getElementById('redHealthColor');
         const blueHealthColorInput = document.getElementById('blueHealthColor');
         
-        // Background color controls
+        const standaloneRedColor = document.getElementById('standaloneRedColor');
+        const standaloneRedPicker = document.getElementById('standaloneRedPicker');
+        const standaloneBlueColor = document.getElementById('standaloneBlueColor');
+        const standaloneBluePicker = document.getElementById('standaloneBluePicker');
+        const standaloneBorderColor = document.getElementById('standaloneBorderColor');
+        const standaloneBorderPicker = document.getElementById('standaloneBorderPicker');
+        const standaloneEmptyColor = document.getElementById('standaloneEmptyColor');
+        const standaloneEmptyPicker = document.getElementById('standaloneEmptyPicker');
+        
+        let standaloneColors = {
+            red: '#e74c3c',
+            blue: '#3498db',
+            border: '#333333',
+            empty: '#dddddd'
+        };
+        
+        // Video recording variables
+        let mediaRecorder = null;
+        let recordedChunks = [];
+        let isRecording = false;
+        
         const backgroundColorText = document.getElementById('backgroundColorText');
         const backgroundColorPicker = document.getElementById('backgroundColorPicker');
         const applyBackgroundBtn = document.getElementById('applyBackgroundBtn');
         const restoreBackgroundBtn = document.getElementById('restoreBackgroundBtn');
         
-        // Frame controls
         const frameColorText = document.getElementById('frameColorText');
         const frameColorPicker = document.getElementById('frameColorPicker');
         const applyFrameBtn = document.getElementById('applyFrameBtn');
         const resetFrameBtn = document.getElementById('resetFrameBtn');
         
-        // Audio variables
         let audioContext = null;
         let audioBuffers = {};
         let audioEvents = [];
         let simulationStartTime = 0;
         let isTrackingAudio = false;
         
-        // Countdown variables
         let countdown = 5;
         let countdownActive = false;
         let gameStarted = false;
         
-        // Fullscreen variables
         let isFullscreen = false;
         let originalCanvasSize = { width: 1080, height: 720 };
         let originalCanvasStyle = { width: canvas.style.width, height: canvas.style.height };
@@ -310,7 +399,6 @@
         let fullscreenOffsetX = 0;
         let fullscreenOffsetY = 0;
         
-        // Frame variables
         let frameBounds = {
             left: 20,
             right: canvas.width - 20,
@@ -321,11 +409,9 @@
         let frameThickness = 8;
         const MIN_FRAME_SIZE = 100;
         
-        // Health bar elements
         const redHealthBar = document.getElementById('redHealthBar');
         const blueHealthBar = document.getElementById('blueHealthBar');
         
-        // Game settings
         let isPaused = false;
         let speedMultiplier = 1;
         let redThornColor = "#BEBEBE";
@@ -336,19 +422,14 @@
         let oldBackgroundColor = canvasBackgroundColor;
         const SOUND_COOLDOWN = 300;
         
-        // Health tracking
         let redSquareHealth = 4;
         let blueSquareHealth = 4;
         let lastRedHealth = -1;
         let lastBlueHealth = -1;
         
-        // Default square properties
         const DEFAULT_SQUARE_SIZE = 120;
-        
-        // Speed constant
         const SPEED = 6;
         
-        // Image loading tracking
         let loadedImages = 0;
         const totalImages = 4;
         let redImageReady = false;
@@ -356,7 +437,6 @@
         let knifeImageReady = false;
         let healImageReady = false;
         
-        // Image objects with loading event listeners
         const redSquareImg = new Image();
         redSquareImg.src = "red.png";
         
@@ -369,26 +449,217 @@
         const healImg = new Image();
         healImg.src = "heal.png";
         
-        // Fallback colors for squares
         const RED_SQUARE_COLOR = '#e74c3c';
         const BLUE_SQUARE_COLOR = '#3498db';
         
-        // Powerup properties
         const KNIFE_SPAWN_INTERVAL = 8000;
         const HEAL_SPAWN_INTERVAL = 15000;
         const THORN_DURATION = 7000;
         const POWER_UP_SIZE = 60;
         
-        // Power-up spawn intervals
         let knifeSpawnInterval = null;
         let healSpawnInterval = null;
         
-        // Audio initialization and management
+        // Video recording functions
+        function startVideoRecording() {
+            try {
+                recordedChunks = [];
+                const stream = healthBarCanvas.captureStream(30); // 30 FPS
+                
+                mediaRecorder = new MediaRecorder(stream, {
+                    mimeType: 'video/webm;codecs=vp9',
+                    videoBitsPerSecond: 2500000
+                });
+                
+                mediaRecorder.ondataavailable = function(event) {
+                    if (event.data.size > 0) {
+                        recordedChunks.push(event.data);
+                    }
+                };
+                
+                mediaRecorder.onstop = function() {
+                    downloadVideoBtn.disabled = false;
+                    recordingStatus.innerHTML = '<span class="recording-indicator">Recording stopped. Click "Download Video" to save.</span>';
+                };
+                
+                mediaRecorder.start();
+                isRecording = true;
+                
+                startVideoBtn.disabled = true;
+                stopVideoBtn.disabled = false;
+                downloadVideoBtn.disabled = true;
+                
+                recordingStatus.innerHTML = '<span class="recording-indicator">🔴 Recording...</span>';
+                
+                console.log('Video recording started');
+            } catch (error) {
+                console.error('Failed to start video recording:', error);
+                alert('Failed to start video recording. Your browser may not support this feature.');
+            }
+        }
+        
+        function stopVideoRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                
+                startVideoBtn.disabled = false;
+                stopVideoBtn.disabled = true;
+                
+                console.log('Video recording stopped');
+            }
+        }
+        
+        function downloadVideo() {
+            if (recordedChunks.length === 0) {
+                alert('No video recorded. Start and stop recording first.');
+                return;
+            }
+            
+            const blob = new Blob(recordedChunks, { type: 'video/webm' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'health-bars-recording.webm';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            recordingStatus.innerHTML = '';
+            downloadVideoBtn.disabled = true;
+            
+            console.log('Video downloaded');
+        }
+        
+        startVideoBtn.addEventListener('click', startVideoRecording);
+        stopVideoBtn.addEventListener('click', stopVideoRecording);
+        downloadVideoBtn.addEventListener('click', downloadVideo);
+        
+        function drawStandaloneHealthBars() {
+            healthBarCtx.clearRect(0, 0, healthBarCanvas.width, healthBarCanvas.height);
+            
+            const barWidth = 350;
+            const barHeight = 60;
+            const segmentCount = 4;
+            const segmentWidth = barWidth / segmentCount;
+            const gap = 100;
+            const yPosition = (healthBarCanvas.height - barHeight) / 2;
+            
+            const blueX = 50;
+            for (let i = 0; i < segmentCount; i++) {
+                const x = blueX + (i * segmentWidth);
+                
+                if (i < blueSquareHealth) {
+                    healthBarCtx.fillStyle = standaloneColors.blue;
+                } else {
+                    healthBarCtx.fillStyle = standaloneColors.empty;
+                }
+                healthBarCtx.fillRect(x, yPosition, segmentWidth, barHeight);
+                
+                healthBarCtx.strokeStyle = standaloneColors.border;
+                healthBarCtx.lineWidth = 3;
+                healthBarCtx.strokeRect(x, yPosition, segmentWidth, barHeight);
+            }
+            
+            const redX = blueX + barWidth + gap;
+            for (let i = 0; i < segmentCount; i++) {
+                const x = redX + (i * segmentWidth);
+                
+                if (i < redSquareHealth) {
+                    healthBarCtx.fillStyle = standaloneColors.red;
+                } else {
+                    healthBarCtx.fillStyle = standaloneColors.empty;
+                }
+                healthBarCtx.fillRect(x, yPosition, segmentWidth, barHeight);
+                
+                healthBarCtx.strokeStyle = standaloneColors.border;
+                healthBarCtx.lineWidth = 3;
+                healthBarCtx.strokeRect(x, yPosition, segmentWidth, barHeight);
+            }
+            
+            healthBarCtx.fillStyle = standaloneColors.border;
+            healthBarCtx.font = 'bold 16px Arial';
+            healthBarCtx.textAlign = 'center';
+            healthBarCtx.fillText('Blue Square', blueX + barWidth / 2, yPosition - 10);
+            healthBarCtx.fillText('Red Square', redX + barWidth / 2, yPosition - 10);
+        }
+        
+        function downloadHealthBars() {
+            healthBarCanvas.toBlob(function(blob) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'health-bars.png';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+        }
+        
+        standaloneRedColor.addEventListener('input', function() {
+            if (isValidHexColor(this.value)) {
+                standaloneColors.red = this.value;
+                standaloneRedPicker.value = this.value;
+                drawStandaloneHealthBars();
+            }
+        });
+        
+        standaloneRedPicker.addEventListener('input', function() {
+            standaloneColors.red = this.value;
+            standaloneRedColor.value = this.value;
+            drawStandaloneHealthBars();
+        });
+        
+        standaloneBlueColor.addEventListener('input', function() {
+            if (isValidHexColor(this.value)) {
+                standaloneColors.blue = this.value;
+                standaloneBluePicker.value = this.value;
+                drawStandaloneHealthBars();
+            }
+        });
+        
+        standaloneBluePicker.addEventListener('input', function() {
+            standaloneColors.blue = this.value;
+            standaloneBlueColor.value = this.value;
+            drawStandaloneHealthBars();
+        });
+        
+        standaloneBorderColor.addEventListener('input', function() {
+            if (isValidHexColor(this.value)) {
+                standaloneColors.border = this.value;
+                standaloneBorderPicker.value = this.value;
+                drawStandaloneHealthBars();
+            }
+        });
+        
+        standaloneBorderPicker.addEventListener('input', function() {
+            standaloneColors.border = this.value;
+            standaloneBorderColor.value = this.value;
+            drawStandaloneHealthBars();
+        });
+        
+        standaloneEmptyColor.addEventListener('input', function() {
+            if (isValidHexColor(this.value)) {
+                standaloneColors.empty = this.value;
+                standaloneEmptyPicker.value = this.value;
+                drawStandaloneHealthBars();
+            }
+        });
+        
+        standaloneEmptyPicker.addEventListener('input', function() {
+            standaloneColors.empty = this.value;
+            standaloneEmptyColor.value = this.value;
+            drawStandaloneHealthBars();
+        });
+        
+        downloadHealthBarsBtn.addEventListener('click', downloadHealthBars);
+        
         async function initializeAudio() {
             try {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 
-                // Load actual sound files into buffers
                 const soundFiles = ['blue.wav', 'red.wav', 'heal.wav', 'knife.wav', 'hit.wav'];
                 
                 for (const filename of soundFiles) {
@@ -420,7 +691,7 @@
             const timestamp = Date.now() - simulationStartTime;
             audioEvents.push({
                 sound: soundName,
-                time: timestamp / 1000 // convert to seconds
+                time: timestamp / 1000
             });
         }
         
@@ -432,7 +703,6 @@
             });
         }
         
-        // Convert AudioBuffer to WAV
         function audioBufferToWav(buffer) {
             const length = buffer.length;
             const sampleRate = buffer.sampleRate;
@@ -440,7 +710,6 @@
             const view = new DataView(arrayBuffer);
             const channelData = buffer.getChannelData(0);
             
-            // WAV header
             const writeString = (offset, string) => {
                 for (let i = 0; i < string.length; i++) {
                     view.setUint8(offset + i, string.charCodeAt(i));
@@ -461,7 +730,6 @@
             writeString(36, 'data');
             view.setUint32(40, length * 2, true);
             
-            // Convert audio data
             let offset = 44;
             for (let i = 0; i < length; i++) {
                 const sample = Math.max(-1, Math.min(1, channelData[i]));
@@ -480,16 +748,13 @@
             
             console.log(`Generating audio from ${audioEvents.length} events`);
             
-            // Create a longer buffer to accommodate all events
             const maxTime = Math.max(...audioEvents.map(event => event.time)) + 2;
             const sampleRate = audioContext.sampleRate;
             const totalSamples = Math.ceil(maxTime * sampleRate);
             
-            // Create the final audio buffer
             const finalBuffer = audioContext.createBuffer(1, totalSamples, sampleRate);
             const channelData = finalBuffer.getChannelData(0);
             
-            // Mix all sound events into the final buffer
             for (const event of audioEvents) {
                 const soundBuffer = audioBuffers[event.sound];
                 if (!soundBuffer) continue;
@@ -497,13 +762,11 @@
                 const startSample = Math.floor(event.time * sampleRate);
                 const soundData = soundBuffer.getChannelData(0);
                 
-                // Copy sound data into the final buffer at the correct time
                 for (let i = 0; i < soundData.length && (startSample + i) < totalSamples; i++) {
-                    channelData[startSample + i] += soundData[i] * 0.5; // Mix at half volume to prevent clipping
+                    channelData[startSample + i] += soundData[i] * 0.5;
                 }
             }
             
-            // Convert to WAV and download
             const wavBlob = audioBufferToWav(finalBuffer);
             const url = URL.createObjectURL(wavBlob);
             const a = document.createElement('a');
@@ -517,12 +780,11 @@
             console.log('Audio file generated and download initiated');
         }
         
-        // Add countdown function
         function startCountdown() {
             countdownActive = true;
             gameStarted = false;
             countdown = 5;
-            isPaused = true; // Pause the game during countdown
+            isPaused = true;
             
             const countdownInterval = setInterval(() => {
                 countdown--;
@@ -531,16 +793,14 @@
                     clearInterval(countdownInterval);
                     countdownActive = false;
                     gameStarted = true;
-                    isPaused = false; // Resume the game after countdown
+                    isPaused = false;
                     pauseBtn.textContent = 'Pause';
                 }
             }, 1000);
         }
         
-        // Fullscreen function
         function toggleFullscreen() {
             if (!isFullscreen) {
-                // Enter fullscreen
                 if (canvas.requestFullscreen) {
                     canvas.requestFullscreen();
                 } else if (canvas.webkitRequestFullscreen) {
@@ -551,7 +811,6 @@
                     canvas.msRequestFullscreen();
                 }
             } else {
-                // Exit fullscreen
                 if (document.exitFullscreen) {
                     document.exitFullscreen();
                 } else if (document.webkitExitFullscreen) {
@@ -564,7 +823,6 @@
             }
         }
 
-        // Handle fullscreen change events
         function handleFullscreenChange() {
             isFullscreen = !!(document.fullscreenElement || 
                              document.webkitFullscreenElement || 
@@ -572,7 +830,6 @@
                              document.msFullscreenElement);
             
             if (isFullscreen) {
-                // Save original positions
                 originalSquarePositions = squares.map(square => ({
                     x: square.x,
                     y: square.y,
@@ -581,25 +838,21 @@
                     vy: square.vy
                 }));
                 
-                // Set canvas to fullscreen size
                 canvas.width = window.screen.width;
                 canvas.height = window.screen.height;
                 canvas.style.width = '100vw';
                 canvas.style.height = '100vh';
                 canvas.style.objectFit = 'contain';
                 
-                // Calculate scaling
                 const scaleX = canvas.width / originalCanvasSize.width;
                 const scaleY = canvas.height / originalCanvasSize.height;
                 fullscreenScale = Math.min(scaleX, scaleY);
                 
-                // Center the game area
                 const newWidth = originalCanvasSize.width * fullscreenScale;
                 const newHeight = originalCanvasSize.height * fullscreenScale;
                 fullscreenOffsetX = (canvas.width - newWidth) / 2;
                 fullscreenOffsetY = (canvas.height - newHeight) / 2;
                 
-                // Update frame bounds
                 frameBounds = {
                     left: fullscreenOffsetX + 20 * fullscreenScale,
                     right: fullscreenOffsetX + newWidth - 20 * fullscreenScale,
@@ -607,7 +860,6 @@
                     bottom: fullscreenOffsetY + newHeight - 20 * fullscreenScale
                 };
                 
-                // Scale squares
                 squares.forEach(square => {
                     square.x = (square.x * fullscreenScale) + fullscreenOffsetX;
                     square.y = (square.y * fullscreenScale) + fullscreenOffsetY;
@@ -616,7 +868,6 @@
                     square.vy = square.vy * fullscreenScale;
                 });
                 
-                // Scale power-ups
                 powerUps.forEach(powerUp => {
                     powerUp.x = (powerUp.x * fullscreenScale) + fullscreenOffsetX;
                     powerUp.y = (powerUp.y * fullscreenScale) + fullscreenOffsetY;
@@ -624,14 +875,12 @@
                 });
                 
             } else {
-                // Restore original size
                 canvas.width = originalCanvasSize.width;
                 canvas.height = originalCanvasSize.height;
                 canvas.style.width = originalCanvasStyle.width;
                 canvas.style.height = originalCanvasStyle.height;
                 canvas.style.objectFit = '';
                 
-                // Reset frame bounds
                 frameBounds = {
                     left: 20,
                     right: canvas.width - 20,
@@ -639,7 +888,6 @@
                     bottom: canvas.height - 20
                 };
                 
-                // Restore squares to original positions
                 if (originalSquarePositions.length > 0) {
                     squares.forEach((square, index) => {
                         if (originalSquarePositions[index]) {
@@ -652,18 +900,15 @@
                     });
                 }
                 
-                // Reset power-ups
                 powerUps = [];
             }
         }
 
-        // Add fullscreen event listeners
         document.addEventListener('fullscreenchange', handleFullscreenChange);
         document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
         document.addEventListener('mozfullscreenchange', handleFullscreenChange);
         document.addEventListener('MSFullscreenChange', handleFullscreenChange);
         
-        // Random position functions
         function getRandomPosition(size = POWER_UP_SIZE) {
             const objectSize = size * (isFullscreen ? fullscreenScale : 1);
             return {
@@ -676,7 +921,6 @@
             return getRandomPosition(DEFAULT_SQUARE_SIZE);
         }
         
-        // Power-up spawn functions
         function spawnKnifePowerUp() {
             if (knifeImageReady) {
                 const pos = getRandomPosition(POWER_UP_SIZE);
@@ -703,7 +947,6 @@
             }
         }
         
-        // Particle System
         class Particle {
             constructor(x, y, color = '#4ECDC4') {
                 this.x = x;
@@ -793,7 +1036,6 @@
             }
         }
 
-        // Create particle systems for each square
         const redParticles = new ParticleSystem(canvas, { 
             color: redHealthColor, 
             particleCount: 30
@@ -803,7 +1045,6 @@
             particleCount: 30
         });
         
-        // Multi-color explosion function
         function createMultiColorExplosion(x, y) {
             const colors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#e67e22', '#1abc9c'];
             
@@ -815,7 +1056,6 @@
             }
         }
         
-        // Background color control functions
         function isValidHexColor(color) {
             return /^#([0-9A-F]{3}|[0-9A-F]{6})$/i.test(color);
         }
@@ -832,7 +1072,6 @@
             }
         }
         
-        // Frame control functions
         function applyFrameColor(color) {
             if (isValidHexColor(color)) {
                 frameColor = color;
@@ -904,7 +1143,6 @@
             ctx.restore();
         }
         
-        // Event listeners for background color controls
         applyBackgroundBtn.addEventListener('click', function() {
             const color = backgroundColorText.value;
             applyBackgroundColor(color);
@@ -924,7 +1162,6 @@
             applyBackgroundColor(oldBackgroundColor);
         });
         
-        // Frame color controls
         applyFrameBtn.addEventListener('click', function() {
             applyFrameColor(frameColorText.value);
         });
@@ -941,7 +1178,6 @@
         
         resetFrameBtn.addEventListener('click', resetFrame);
         
-        // Audio control event listeners
         startAudioBtn.addEventListener('click', async function() {
             const success = await initializeAudio();
             if (success) {
@@ -958,7 +1194,6 @@
             downloadAudio();
         });
         
-        // Keyboard Controls - updated for mobile
         document.addEventListener('keydown', function(event) {
             const key = event.key.toLowerCase();
             
@@ -993,9 +1228,7 @@
             }
         });
         
-        // Add volume button controls for mobile
         document.addEventListener('keydown', function(event) {
-            // For mobile devices, we need to listen for volume keys
             if (event.key === 'AudioVolumeDown' || event.keyCode === 174) {
                 event.preventDefault();
                 pauseBtn.click();
@@ -1006,7 +1239,6 @@
             }
         });
         
-        // Function to update health bar display
         function updateHealthBar(healthBar, health, maxHealth, color) {
             const segments = healthBar.querySelectorAll('.health-segment');
             segments.forEach((segment, index) => {
@@ -1018,7 +1250,6 @@
             });
         }
         
-        // Function to calculate health based on square size
         function calculateHealth(size) {
             const baseSize = DEFAULT_SQUARE_SIZE * (isFullscreen ? fullscreenScale : 1);
             if (size <= 0) return 0;
@@ -1029,7 +1260,6 @@
             return 0;
         }
         
-        // Create squares with 45° angles only
         function createSquare(x, y, direction, color, imageSrc, isBlue = false) {
             let vx, vy;
             
@@ -1074,12 +1304,10 @@
             };
         }
         
-        // Initialize squares with random positions
         function initializeSquares() {
             const bluePos = getRandomSquarePosition();
             const redPos = getRandomSquarePosition();
             
-            // Ensure squares don't spawn too close to each other
             let attempts = 0;
             while (Math.abs(bluePos.x - redPos.x) < 200 && Math.abs(bluePos.y - redPos.y) < 200 && attempts < 10) {
                 const newRedPos = getRandomSquarePosition();
@@ -1094,13 +1322,9 @@
             ];
         }
         
-        // Initialize squares
         let squares = initializeSquares();
-        
-        // Powerups array
         let powerUps = [];
         
-        // Function to check collision between square and power-up
         function checkPowerUpCollision(square, powerUp) {
             return square.x < powerUp.x + powerUp.size &&
                    square.x + square.size > powerUp.x &&
@@ -1108,7 +1332,6 @@
                    square.y + square.size > powerUp.y;
         }
         
-        // Function to check collision between two squares
         function checkCollision(square1, square2) {
             return square1.x < square2.x + square2.size &&
                    square1.x + square1.size > square2.x &&
@@ -1116,7 +1339,6 @@
                    square1.y + square1.size > square2.y;
         }
 
-        // Determine which side of square2 was hit by square1
         function getCollisionSide(square1, square2) {
             const center1 = { x: square1.x + square1.size / 2, y: square1.y + square1.size / 2 };
             const center2 = { x: square2.x + square2.size / 2, y: square2.y + square2.size / 2 };
@@ -1131,7 +1353,6 @@
             }
         }
 
-        // Function to separate squares after collision
         function separateSquares(square1, square2) {
             const dx = (square2.x + square2.size/2) - (square1.x + square1.size/2);
             const dy = (square2.y + square2.size/2) - (square1.y + square1.size/2);
@@ -1149,7 +1370,6 @@
             }
         }
 
-        // Function to handle collision between two squares with reflective physics
         function handleCollision(square1, square2) {
             const side1 = getCollisionSide(square1, square2);
             const side2 = getCollisionSide(square2, square1);
@@ -1192,14 +1412,12 @@
             
             separateSquares(square1, square2);
             
-            // Check if damage should be dealt
             const damageAmount = 30 * (isFullscreen ? fullscreenScale : 1);
             const minSize = 30 * (isFullscreen ? fullscreenScale : 1);
             
             if (square1.hasThorns && !square2.hasThorns) {
                 const newSize = Math.max(minSize, square2.size - damageAmount);
                 
-                // Play hit sound
                 playSound('hit');
                 
                 if (square2.size <= minSize) {
@@ -1223,7 +1441,6 @@
             } else if (square2.hasThorns && !square1.hasThorns) {
                 const newSize = Math.max(minSize, square1.size - damageAmount);
                 
-                // Play hit sound
                 playSound('hit');
                 
                 if (square1.size <= minSize) {
@@ -1245,20 +1462,17 @@
                 
                 squares.forEach(sq => sq.hasThorns = false);
             } else {
-                // No thorns - play both blue and red sounds
                 playSoundsCombined(['blue', 'red']);
             }
         }
         
-        // Function to draw thorns around a square - FIXED TO /16
         function drawThorns(square) {
             const size = square.size;
-            const thornSize = size / 16; // Changed from size / 24 to size / 16
-            const thornCount = Math.floor(size / (thornSize * 1.5)); // Number of thorns per side
+            const thornSize = size / 16;
+            const thornCount = Math.floor(size / (thornSize * 1.5));
             
             ctx.fillStyle = square.isBlue ? blueThornColor : redThornColor;
             
-            // Top side
             for (let i = 0; i < thornCount; i++) {
                 const x = square.x + (i * size / thornCount);
                 ctx.beginPath();
@@ -1269,7 +1483,6 @@
                 ctx.fill();
             }
             
-            // Bottom side
             for (let i = 0; i < thornCount; i++) {
                 const x = square.x + (i * size / thornCount);
                 ctx.beginPath();
@@ -1280,7 +1493,6 @@
                 ctx.fill();
             }
             
-            // Left side
             for (let i = 0; i < thornCount; i++) {
                 const y = square.y + (i * size / thornCount);
                 ctx.beginPath();
@@ -1291,7 +1503,6 @@
                 ctx.fill();
             }
             
-            // Right side
             for (let i = 0; i < thornCount; i++) {
                 const y = square.y + (i * size / thornCount);
                 ctx.beginPath();
@@ -1303,20 +1514,17 @@
             }
         }
 
-        // Function to update the simulation - MODIFIED WITH COUNTDOWN AND AUDIO
         function update() {
             if (isPaused && !countdownActive) return;
             
             const currentTime = Date.now();
             
-            // Clear canvas with background
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             if (canvasBackgroundColor !== '#ffffff') {
                 ctx.fillStyle = canvasBackgroundColor;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
             }
             
-            // Draw countdown if active
             if (countdownActive) {
                 ctx.save();
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
@@ -1337,13 +1545,11 @@
                 }
                 
                 ctx.restore();
-                return; // Don't update game elements during countdown
+                return;
             }
             
-            // Draw collision frame
             drawCollisionFrame();
             
-            // Draw power-ups
             powerUps.forEach(powerUp => {
                 if (powerUp.type === 'knife' && knifeImageReady) {
                     ctx.drawImage(knifeImg, powerUp.x, powerUp.y, powerUp.size, powerUp.size);
@@ -1355,7 +1561,6 @@
                 }
             });
             
-            // Update power-ups
             for (let i = powerUps.length - 1; i >= 0; i--) {
                 const powerUp = powerUps[i];
                 
@@ -1370,14 +1575,12 @@
                             square.hasThorns = true;
                             square.thornExpiryTime = currentTime + THORN_DURATION;
                             
-                            // Play knife sound
                             playSound('knife');
                         } else if (powerUp.type === 'heal') {
                             const healAmount = 30 * (isFullscreen ? fullscreenScale : 1);
                             const maxSize = DEFAULT_SQUARE_SIZE * (isFullscreen ? fullscreenScale : 1);
                             square.size = Math.min(maxSize, square.size + healAmount);
                             
-                            // Play heal sound
                             playSound('heal');
                         }
                         
@@ -1391,7 +1594,6 @@
                 }
             }
             
-            // Update squares
             for (let i = 0; i < squares.length; i++) {
                 const square = squares[i];
                 
@@ -1406,12 +1608,10 @@
                 square.x += square.vx * speedMultiplier;
                 square.y += square.vy * speedMultiplier;
                 
-                // Check collision with frame boundaries
                 if (square.x <= frameBounds.left || square.x + square.size >= frameBounds.right) {
                     square.vx *= -1;
                     shrinkFrame();
                     
-                    // Play border hit sound
                     if (square.isBlue) {
                         playSound('blue');
                     } else {
@@ -1431,7 +1631,6 @@
                     square.vy *= -1;
                     shrinkFrame();
                     
-                    // Play border hit sound
                     if (square.isBlue) {
                         playSound('blue');
                     } else {
@@ -1447,7 +1646,6 @@
                     if (square.y + square.size >= frameBounds.bottom) square.y = frameBounds.bottom - square.size;
                 }
                 
-                // Draw square
                 if (square.isBlue && blueImageReady) {
                     ctx.drawImage(blueSquareImg, square.x, square.y, square.size, square.size);
                 } else if (!square.isBlue && redImageReady) {
@@ -1457,31 +1655,31 @@
                     ctx.fillRect(square.x, square.y, square.size, square.size);
                 }
                 
-                // Draw border
                 ctx.strokeStyle = '#333';
                 ctx.lineWidth = 2 * (isFullscreen ? fullscreenScale : 1);
                 ctx.strokeRect(square.x, square.y, square.size, square.size);
                 
-                // Draw thorns
                 if (square.hasThorns) {
                     drawThorns(square);
                 }
             }
             
-            // Update health based on square sizes
             const newRedHealth = calculateHealth(squares[1].size);
             const newBlueHealth = calculateHealth(squares[0].size);
             
             if (newRedHealth !== lastRedHealth) {
                 updateHealthBar(redHealthBar, newRedHealth, 4, redHealthColor);
+                redSquareHealth = newRedHealth;
+                drawStandaloneHealthBars();
                 lastRedHealth = newRedHealth;
             }
             if (newBlueHealth !== lastBlueHealth) {
                 updateHealthBar(blueHealthBar, newBlueHealth, 4, blueHealthColor);
+                blueSquareHealth = newBlueHealth;
+                drawStandaloneHealthBars();
                 lastBlueHealth = newBlueHealth;
             }
             
-            // Check collision between squares
             if (squares[0].size > 0 && squares[1].size > 0) {
                 const dx = Math.abs(squares[0].x - squares[1].x);
                 const dy = Math.abs(squares[0].y - squares[1].y);
@@ -1492,18 +1690,15 @@
                 }
             }
             
-            // Update particles
             redParticles.animate();
             blueParticles.animate();
         }
 
-        // Animation loop
         function animate() {
             update();
             requestAnimationFrame(animate);
         }
 
-        // Image loading handler
         function imageLoaded() {
             loadedImages++;
             if (loadedImages === totalImages) {
@@ -1512,7 +1707,6 @@
             }
         }
 
-        // Set up image loading
         redSquareImg.onload = () => { 
             redImageReady = true; 
             imageLoaded(); 
@@ -1549,7 +1743,6 @@
             imageLoaded(); 
         };
 
-        // Timeout for image loading
         setTimeout(() => {
             if (loadedImages < totalImages) {
                 console.log("Some images failed to load, starting anyway");
@@ -1557,19 +1750,17 @@
             }
         }, 3000);
 
-        // Start the game when all images are loaded - MODIFIED WITH COUNTDOWN
         function startGame() {
             animate();
-            startCountdown(); // Start with countdown
+            startCountdown();
+            drawStandaloneHealthBars();
             knifeSpawnInterval = setInterval(spawnKnifePowerUp, KNIFE_SPAWN_INTERVAL);
             healSpawnInterval = setInterval(spawnHealPowerUp, HEAL_SPAWN_INTERVAL);
         }
 
-        // Initialize health bars with default colors
         updateHealthBar(redHealthBar, redSquareHealth, 4, redHealthColor);
         updateHealthBar(blueHealthBar, blueSquareHealth, 4, blueHealthColor);
         
-        // Event listeners for buttons - UPDATED RESET FUNCTION WITH COUNTDOWN
         resetBtn.addEventListener('click', function() {
             if (knifeSpawnInterval) clearInterval(knifeSpawnInterval);
             if (healSpawnInterval) clearInterval(healSpawnInterval);
@@ -1589,14 +1780,13 @@
             redParticles.clear();
             blueParticles.clear();
             
-            // Reset audio tracking
             if (isTrackingAudio) {
                 simulationStartTime = Date.now();
                 audioEvents = [];
             }
             
-            // Start countdown instead of immediately starting game
             startCountdown();
+            drawStandaloneHealthBars();
             
             knifeSpawnInterval = setInterval(spawnKnifePowerUp, KNIFE_SPAWN_INTERVAL);
             healSpawnInterval = setInterval(spawnHealPowerUp, HEAL_SPAWN_INTERVAL);
@@ -1612,12 +1802,10 @@
             this.textContent = `Speed: ${speedMultiplier}x`;
         });
 
-        // Add fullscreen button event listener
         fullscreenBtn.addEventListener('click', function() {
             toggleFullscreen();
         });
         
-        // Color input event listeners
         redThornColorInput.addEventListener('input', function() {
             if (isValidHexColor(this.value)) {
                 redThornColor = this.value;
