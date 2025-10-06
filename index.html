@@ -214,6 +214,37 @@
             font-weight: bold;
             font-size: 14px;
         }
+        .segment-customization {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-top: 15px;
+            padding: 15px;
+            background-color: #fff;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+        }
+        .bar-segments {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .segment-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .segment-label {
+            min-width: 100px;
+            font-weight: bold;
+            font-size: 13px;
+        }
+        .bar-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
     </style>
 </head>
 <body>
@@ -295,28 +326,70 @@
         <div class="health-bar-section">
             <h3>Standalone Health Bars (Downloadable)</h3>
             <canvas id="healthBarCanvas" width="800" height="200"></canvas>
-            <div class="health-bar-customization">
-                <div class="health-color-group">
-                    <label for="standaloneRedColor">Red Bar Color:</label>
-                    <input type="text" id="standaloneRedColor" class="color-input" value="#e74c3c" placeholder="#RRGGBB">
-                    <input type="color" id="standaloneRedPicker" class="color-picker-input" value="#e74c3c">
+            
+            <div class="segment-customization">
+                <div class="bar-segments">
+                    <div class="bar-title">Blue Health Bar Segments</div>
+                    <div class="segment-row">
+                        <span class="segment-label">Segment 1:</span>
+                        <input type="text" id="blueSegment1" class="color-input" value="#3498db" placeholder="#RRGGBB">
+                        <input type="color" id="blueSegment1Picker" class="color-picker-input" value="#3498db">
+                    </div>
+                    <div class="segment-row">
+                        <span class="segment-label">Segment 2:</span>
+                        <input type="text" id="blueSegment2" class="color-input" value="#3498db" placeholder="#RRGGBB">
+                        <input type="color" id="blueSegment2Picker" class="color-picker-input" value="#3498db">
+                    </div>
+                    <div class="segment-row">
+                        <span class="segment-label">Segment 3:</span>
+                        <input type="text" id="blueSegment3" class="color-input" value="#3498db" placeholder="#RRGGBB">
+                        <input type="color" id="blueSegment3Picker" class="color-picker-input" value="#3498db">
+                    </div>
+                    <div class="segment-row">
+                        <span class="segment-label">Segment 4:</span>
+                        <input type="text" id="blueSegment4" class="color-input" value="#3498db" placeholder="#RRGGBB">
+                        <input type="color" id="blueSegment4Picker" class="color-picker-input" value="#3498db">
+                    </div>
                 </div>
-                <div class="health-color-group">
-                    <label for="standaloneBlueColor">Blue Bar Color:</label>
-                    <input type="text" id="standaloneBlueColor" class="color-input" value="#3498db" placeholder="#RRGGBB">
-                    <input type="color" id="standaloneBluePicker" class="color-picker-input" value="#3498db">
+                
+                <div class="bar-segments">
+                    <div class="bar-title">Red Health Bar Segments</div>
+                    <div class="segment-row">
+                        <span class="segment-label">Segment 1:</span>
+                        <input type="text" id="redSegment1" class="color-input" value="#e74c3c" placeholder="#RRGGBB">
+                        <input type="color" id="redSegment1Picker" class="color-picker-input" value="#e74c3c">
+                    </div>
+                    <div class="segment-row">
+                        <span class="segment-label">Segment 2:</span>
+                        <input type="text" id="redSegment2" class="color-input" value="#e74c3c" placeholder="#RRGGBB">
+                        <input type="color" id="redSegment2Picker" class="color-picker-input" value="#e74c3c">
+                    </div>
+                    <div class="segment-row">
+                        <span class="segment-label">Segment 3:</span>
+                        <input type="text" id="redSegment3" class="color-input" value="#e74c3c" placeholder="#RRGGBB">
+                        <input type="color" id="redSegment3Picker" class="color-picker-input" value="#e74c3c">
+                    </div>
+                    <div class="segment-row">
+                        <span class="segment-label">Segment 4:</span>
+                        <input type="text" id="redSegment4" class="color-input" value="#e74c3c" placeholder="#RRGGBB">
+                        <input type="color" id="redSegment4Picker" class="color-picker-input" value="#e74c3c">
+                    </div>
                 </div>
-                <div class="health-color-group">
-                    <label for="standaloneBorderColor">Border Color:</label>
-                    <input type="text" id="standaloneBorderColor" class="color-input" value="#333333" placeholder="#RRGGBB">
-                    <input type="color" id="standaloneBorderPicker" class="color-picker-input" value="#333333">
-                </div>
-                <div class="health-color-group">
-                    <label for="standaloneEmptyColor">Empty Segment Color:</label>
-                    <input type="text" id="standaloneEmptyColor" class="color-input" value="#dddddd" placeholder="#RRGGBB">
-                    <input type="color" id="standaloneEmptyPicker" class="color-picker-input" value="#dddddd">
+                
+                <div class="health-bar-customization">
+                    <div class="health-color-group">
+                        <label for="standaloneBorderColor">Border Color:</label>
+                        <input type="text" id="standaloneBorderColor" class="color-input" value="#333333" placeholder="#RRGGBB">
+                        <input type="color" id="standaloneBorderPicker" class="color-picker-input" value="#333333">
+                    </div>
+                    <div class="health-color-group">
+                        <label for="standaloneEmptyColor">Empty Segment Color:</label>
+                        <input type="text" id="standaloneEmptyColor" class="color-input" value="#dddddd" placeholder="#RRGGBB">
+                        <input type="color" id="standaloneEmptyPicker" class="color-picker-input" value="#dddddd">
+                    </div>
                 </div>
             </div>
+            
             <div class="video-controls">
                 <button id="startVideoBtn" class="recording-btn">Start Recording</button>
                 <button id="stopVideoBtn" class="recording-btn" disabled>Stop Recording</button>
@@ -350,23 +423,37 @@
         const redHealthColorInput = document.getElementById('redHealthColor');
         const blueHealthColorInput = document.getElementById('blueHealthColor');
         
-        const standaloneRedColor = document.getElementById('standaloneRedColor');
-        const standaloneRedPicker = document.getElementById('standaloneRedPicker');
-        const standaloneBlueColor = document.getElementById('standaloneBlueColor');
-        const standaloneBluePicker = document.getElementById('standaloneBluePicker');
+        // Individual segment color inputs
+        const blueSegment1 = document.getElementById('blueSegment1');
+        const blueSegment1Picker = document.getElementById('blueSegment1Picker');
+        const blueSegment2 = document.getElementById('blueSegment2');
+        const blueSegment2Picker = document.getElementById('blueSegment2Picker');
+        const blueSegment3 = document.getElementById('blueSegment3');
+        const blueSegment3Picker = document.getElementById('blueSegment3Picker');
+        const blueSegment4 = document.getElementById('blueSegment4');
+        const blueSegment4Picker = document.getElementById('blueSegment4Picker');
+        
+        const redSegment1 = document.getElementById('redSegment1');
+        const redSegment1Picker = document.getElementById('redSegment1Picker');
+        const redSegment2 = document.getElementById('redSegment2');
+        const redSegment2Picker = document.getElementById('redSegment2Picker');
+        const redSegment3 = document.getElementById('redSegment3');
+        const redSegment3Picker = document.getElementById('redSegment3Picker');
+        const redSegment4 = document.getElementById('redSegment4');
+        const redSegment4Picker = document.getElementById('redSegment4Picker');
+        
         const standaloneBorderColor = document.getElementById('standaloneBorderColor');
         const standaloneBorderPicker = document.getElementById('standaloneBorderPicker');
         const standaloneEmptyColor = document.getElementById('standaloneEmptyColor');
         const standaloneEmptyPicker = document.getElementById('standaloneEmptyPicker');
         
         let standaloneColors = {
-            red: '#e74c3c',
-            blue: '#3498db',
+            blueSegments: ['#3498db', '#3498db', '#3498db', '#3498db'],
+            redSegments: ['#e74c3c', '#e74c3c', '#e74c3c', '#e74c3c'],
             border: '#333333',
             empty: '#dddddd'
         };
         
-        // Video recording variables
         let mediaRecorder = null;
         let recordedChunks = [];
         let isRecording = false;
@@ -460,11 +547,73 @@
         let knifeSpawnInterval = null;
         let healSpawnInterval = null;
         
-        // Video recording functions
+        // Setup segment color event listeners
+        function setupSegmentColorListeners(textInput, pickerInput, segmentIndex, isBlue) {
+            textInput.addEventListener('input', function() {
+                if (isValidHexColor(this.value)) {
+                    if (isBlue) {
+                        standaloneColors.blueSegments[segmentIndex] = this.value;
+                    } else {
+                        standaloneColors.redSegments[segmentIndex] = this.value;
+                    }
+                    pickerInput.value = this.value;
+                    drawStandaloneHealthBars();
+                }
+            });
+            
+            pickerInput.addEventListener('input', function() {
+                if (isBlue) {
+                    standaloneColors.blueSegments[segmentIndex] = this.value;
+                } else {
+                    standaloneColors.redSegments[segmentIndex] = this.value;
+                }
+                textInput.value = this.value;
+                drawStandaloneHealthBars();
+            });
+        }
+        
+        setupSegmentColorListeners(blueSegment1, blueSegment1Picker, 0, true);
+        setupSegmentColorListeners(blueSegment2, blueSegment2Picker, 1, true);
+        setupSegmentColorListeners(blueSegment3, blueSegment3Picker, 2, true);
+        setupSegmentColorListeners(blueSegment4, blueSegment4Picker, 3, true);
+        
+        setupSegmentColorListeners(redSegment1, redSegment1Picker, 0, false);
+        setupSegmentColorListeners(redSegment2, redSegment2Picker, 1, false);
+        setupSegmentColorListeners(redSegment3, redSegment3Picker, 2, false);
+        setupSegmentColorListeners(redSegment4, redSegment4Picker, 3, false);
+        
+        standaloneBorderColor.addEventListener('input', function() {
+            if (isValidHexColor(this.value)) {
+                standaloneColors.border = this.value;
+                standaloneBorderPicker.value = this.value;
+                drawStandaloneHealthBars();
+            }
+        });
+        
+        standaloneBorderPicker.addEventListener('input', function() {
+            standaloneColors.border = this.value;
+            standaloneBorderColor.value = this.value;
+            drawStandaloneHealthBars();
+        });
+        
+        standaloneEmptyColor.addEventListener('input', function() {
+            if (isValidHexColor(this.value)) {
+                standaloneColors.empty = this.value;
+                standaloneEmptyPicker.value = this.value;
+                drawStandaloneHealthBars();
+            }
+        });
+        
+        standaloneEmptyPicker.addEventListener('input', function() {
+            standaloneColors.empty = this.value;
+            standaloneEmptyColor.value = this.value;
+            drawStandaloneHealthBars();
+        });
+        
         function startVideoRecording() {
             try {
                 recordedChunks = [];
-                const stream = healthBarCanvas.captureStream(30); // 30 FPS
+                const stream = healthBarCanvas.captureStream(30);
                 
                 mediaRecorder = new MediaRecorder(stream, {
                     mimeType: 'video/webm;codecs=vp9',
@@ -545,39 +694,152 @@
             const segmentWidth = barWidth / segmentCount;
             const gap = 100;
             const yPosition = (healthBarCanvas.height - barHeight) / 2;
+            const cornerRadius = 8;
             
+            // Draw Blue Health Bar with rounded corners
             const blueX = 50;
             for (let i = 0; i < segmentCount; i++) {
                 const x = blueX + (i * segmentWidth);
                 
-                if (i < blueSquareHealth) {
-                    healthBarCtx.fillStyle = standaloneColors.blue;
+                healthBarCtx.save();
+                healthBarCtx.beginPath();
+                
+                // Create rounded rectangle path for each segment
+                if (i === 0) {
+                    // First segment - round left corners
+                    healthBarCtx.moveTo(x + cornerRadius, yPosition);
+                    healthBarCtx.lineTo(x + segmentWidth, yPosition);
+                    healthBarCtx.lineTo(x + segmentWidth, yPosition + barHeight);
+                    healthBarCtx.lineTo(x + cornerRadius, yPosition + barHeight);
+                    healthBarCtx.arc(x + cornerRadius, yPosition + barHeight - cornerRadius, cornerRadius, Math.PI / 2, Math.PI);
+                    healthBarCtx.lineTo(x, yPosition + cornerRadius);
+                    healthBarCtx.arc(x + cornerRadius, yPosition + cornerRadius, cornerRadius, Math.PI, Math.PI * 1.5);
+                } else if (i === segmentCount - 1) {
+                    // Last segment - round right corners
+                    healthBarCtx.moveTo(x, yPosition);
+                    healthBarCtx.lineTo(x + segmentWidth - cornerRadius, yPosition);
+                    healthBarCtx.arc(x + segmentWidth - cornerRadius, yPosition + cornerRadius, cornerRadius, Math.PI * 1.5, 0);
+                    healthBarCtx.lineTo(x + segmentWidth, yPosition + barHeight - cornerRadius);
+                    healthBarCtx.arc(x + segmentWidth - cornerRadius, yPosition + barHeight - cornerRadius, cornerRadius, 0, Math.PI / 2);
+                    healthBarCtx.lineTo(x, yPosition + barHeight);
+                    healthBarCtx.lineTo(x, yPosition);
                 } else {
+                    // Middle segments - no rounding
+                    healthBarCtx.rect(x, yPosition, segmentWidth, barHeight);
+                }
+                
+                healthBarCtx.closePath();
+                healthBarCtx.clip();
+                
+                if (i < blueSquareHealth) {
+                    healthBarCtx.fillStyle = standaloneColors.blueSegments[i];
+                } 
+                else {
                     healthBarCtx.fillStyle = standaloneColors.empty;
                 }
                 healthBarCtx.fillRect(x, yPosition, segmentWidth, barHeight);
                 
+                healthBarCtx.restore();
+                
+                // Draw border
                 healthBarCtx.strokeStyle = standaloneColors.border;
                 healthBarCtx.lineWidth = 3;
-                healthBarCtx.strokeRect(x, yPosition, segmentWidth, barHeight);
+                healthBarCtx.beginPath();
+                
+                if (i === 0) {
+                    healthBarCtx.moveTo(x + cornerRadius, yPosition);
+                    healthBarCtx.lineTo(x + segmentWidth, yPosition);
+                    healthBarCtx.lineTo(x + segmentWidth, yPosition + barHeight);
+                    healthBarCtx.lineTo(x + cornerRadius, yPosition + barHeight);
+                    healthBarCtx.arc(x + cornerRadius, yPosition + barHeight - cornerRadius, cornerRadius, Math.PI / 2, Math.PI);
+                    healthBarCtx.lineTo(x, yPosition + cornerRadius);
+                    healthBarCtx.arc(x + cornerRadius, yPosition + cornerRadius, cornerRadius, Math.PI, Math.PI * 1.5);
+                } else if (i === segmentCount - 1) {
+                    healthBarCtx.moveTo(x, yPosition);
+                    healthBarCtx.lineTo(x + segmentWidth - cornerRadius, yPosition);
+                    healthBarCtx.arc(x + segmentWidth - cornerRadius, yPosition + cornerRadius, cornerRadius, Math.PI * 1.5, 0);
+                    healthBarCtx.lineTo(x + segmentWidth, yPosition + barHeight - cornerRadius);
+                    healthBarCtx.arc(x + segmentWidth - cornerRadius, yPosition + barHeight - cornerRadius, cornerRadius, 0, Math.PI / 2);
+                    healthBarCtx.lineTo(x, yPosition + barHeight);
+                    healthBarCtx.lineTo(x, yPosition);
+                } else {
+                    healthBarCtx.rect(x, yPosition, segmentWidth, barHeight);
+                }
+                
+                healthBarCtx.closePath();
+                healthBarCtx.stroke();
             }
             
+            // Draw Red Health Bar with rounded corners
             const redX = blueX + barWidth + gap;
             for (let i = 0; i < segmentCount; i++) {
                 const x = redX + (i * segmentWidth);
                 
+                healthBarCtx.save();
+                healthBarCtx.beginPath();
+                
+                if (i === 0) {
+                    healthBarCtx.moveTo(x + cornerRadius, yPosition);
+                    healthBarCtx.lineTo(x + segmentWidth, yPosition);
+                    healthBarCtx.lineTo(x + segmentWidth, yPosition + barHeight);
+                    healthBarCtx.lineTo(x + cornerRadius, yPosition + barHeight);
+                    healthBarCtx.arc(x + cornerRadius, yPosition + barHeight - cornerRadius, cornerRadius, Math.PI / 2, Math.PI);
+                    healthBarCtx.lineTo(x, yPosition + cornerRadius);
+                    healthBarCtx.arc(x + cornerRadius, yPosition + cornerRadius, cornerRadius, Math.PI, Math.PI * 1.5);
+                } else if (i === segmentCount - 1) {
+                    healthBarCtx.moveTo(x, yPosition);
+                    healthBarCtx.lineTo(x + segmentWidth - cornerRadius, yPosition);
+                    healthBarCtx.arc(x + segmentWidth - cornerRadius, yPosition + cornerRadius, cornerRadius, Math.PI * 1.5, 0);
+                    healthBarCtx.lineTo(x + segmentWidth, yPosition + barHeight - cornerRadius);
+                    healthBarCtx.arc(x + segmentWidth - cornerRadius, yPosition + barHeight - cornerRadius, cornerRadius, 0, Math.PI / 2);
+                    healthBarCtx.lineTo(x, yPosition + barHeight);
+                    healthBarCtx.lineTo(x, yPosition);
+                } else {
+                    healthBarCtx.rect(x, yPosition, segmentWidth, barHeight);
+                }
+                
+                healthBarCtx.closePath();
+                healthBarCtx.clip();
+                
                 if (i < redSquareHealth) {
-                    healthBarCtx.fillStyle = standaloneColors.red;
+                    healthBarCtx.fillStyle = standaloneColors.redSegments[i];
                 } else {
                     healthBarCtx.fillStyle = standaloneColors.empty;
                 }
                 healthBarCtx.fillRect(x, yPosition, segmentWidth, barHeight);
                 
+                healthBarCtx.restore();
+                
+                // Draw border
                 healthBarCtx.strokeStyle = standaloneColors.border;
                 healthBarCtx.lineWidth = 3;
-                healthBarCtx.strokeRect(x, yPosition, segmentWidth, barHeight);
+                healthBarCtx.beginPath();
+                
+                if (i === 0) {
+                    healthBarCtx.moveTo(x + cornerRadius, yPosition);
+                    healthBarCtx.lineTo(x + segmentWidth, yPosition);
+                    healthBarCtx.lineTo(x + segmentWidth, yPosition + barHeight);
+                    healthBarCtx.lineTo(x + cornerRadius, yPosition + barHeight);
+                    healthBarCtx.arc(x + cornerRadius, yPosition + barHeight - cornerRadius, cornerRadius, Math.PI / 2, Math.PI);
+                    healthBarCtx.lineTo(x, yPosition + cornerRadius);
+                    healthBarCtx.arc(x + cornerRadius, yPosition + cornerRadius, cornerRadius, Math.PI, Math.PI * 1.5);
+                } else if (i === segmentCount - 1) {
+                    healthBarCtx.moveTo(x, yPosition);
+                    healthBarCtx.lineTo(x + segmentWidth - cornerRadius, yPosition);
+                    healthBarCtx.arc(x + segmentWidth - cornerRadius, yPosition + cornerRadius, cornerRadius, Math.PI * 1.5, 0);
+                    healthBarCtx.lineTo(x + segmentWidth, yPosition + barHeight - cornerRadius);
+                    healthBarCtx.arc(x + segmentWidth - cornerRadius, yPosition + barHeight - cornerRadius, cornerRadius, 0, Math.PI / 2);
+                    healthBarCtx.lineTo(x, yPosition + barHeight);
+                    healthBarCtx.lineTo(x, yPosition);
+                } else {
+                    healthBarCtx.rect(x, yPosition, segmentWidth, barHeight);
+                }
+                
+                healthBarCtx.closePath();
+                healthBarCtx.stroke();
             }
             
+            // Draw labels
             healthBarCtx.fillStyle = standaloneColors.border;
             healthBarCtx.font = 'bold 16px Arial';
             healthBarCtx.textAlign = 'center';
@@ -597,62 +859,6 @@
                 URL.revokeObjectURL(url);
             });
         }
-        
-        standaloneRedColor.addEventListener('input', function() {
-            if (isValidHexColor(this.value)) {
-                standaloneColors.red = this.value;
-                standaloneRedPicker.value = this.value;
-                drawStandaloneHealthBars();
-            }
-        });
-        
-        standaloneRedPicker.addEventListener('input', function() {
-            standaloneColors.red = this.value;
-            standaloneRedColor.value = this.value;
-            drawStandaloneHealthBars();
-        });
-        
-        standaloneBlueColor.addEventListener('input', function() {
-            if (isValidHexColor(this.value)) {
-                standaloneColors.blue = this.value;
-                standaloneBluePicker.value = this.value;
-                drawStandaloneHealthBars();
-            }
-        });
-        
-        standaloneBluePicker.addEventListener('input', function() {
-            standaloneColors.blue = this.value;
-            standaloneBlueColor.value = this.value;
-            drawStandaloneHealthBars();
-        });
-        
-        standaloneBorderColor.addEventListener('input', function() {
-            if (isValidHexColor(this.value)) {
-                standaloneColors.border = this.value;
-                standaloneBorderPicker.value = this.value;
-                drawStandaloneHealthBars();
-            }
-        });
-        
-        standaloneBorderPicker.addEventListener('input', function() {
-            standaloneColors.border = this.value;
-            standaloneBorderColor.value = this.value;
-            drawStandaloneHealthBars();
-        });
-        
-        standaloneEmptyColor.addEventListener('input', function() {
-            if (isValidHexColor(this.value)) {
-                standaloneColors.empty = this.value;
-                standaloneEmptyPicker.value = this.value;
-                drawStandaloneHealthBars();
-            }
-        });
-        
-        standaloneEmptyPicker.addEventListener('input', function() {
-            standaloneColors.empty = this.value;
-            standaloneEmptyColor.value = this.value;
-            drawStandaloneHealthBars();
-        });
         
         downloadHealthBarsBtn.addEventListener('click', downloadHealthBars);
         
