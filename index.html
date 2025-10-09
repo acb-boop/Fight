@@ -325,7 +325,7 @@
 
         <div class="health-bar-section">
             <h3>Standalone Health Bars (Downloadable)</h3>
-            <canvas id="healthBarCanvas" width="800" height="200"></canvas>
+            <canvas id="healthBarCanvas" width="2000" height="300"></canvas>
             
             <div class="segment-customization">
                 <div class="bar-segments">
@@ -423,7 +423,6 @@
         const redHealthColorInput = document.getElementById('redHealthColor');
         const blueHealthColorInput = document.getElementById('blueHealthColor');
         
-        // Individual segment color inputs
         const blueSegment1 = document.getElementById('blueSegment1');
         const blueSegment1Picker = document.getElementById('blueSegment1Picker');
         const blueSegment2 = document.getElementById('blueSegment2');
@@ -547,7 +546,6 @@
         let knifeSpawnInterval = null;
         let healSpawnInterval = null;
         
-        // Setup segment color event listeners
         function setupSegmentColorListeners(textInput, pickerInput, segmentIndex, isBlue) {
             textInput.addEventListener('input', function() {
                 if (isValidHexColor(this.value)) {
@@ -613,11 +611,11 @@
         function startVideoRecording() {
             try {
                 recordedChunks = [];
-                const stream = healthBarCanvas.captureStream(30);
+                const stream = healthBarCanvas.captureStream(60);
                 
                 mediaRecorder = new MediaRecorder(stream, {
                     mimeType: 'video/webm;codecs=vp9',
-                    videoBitsPerSecond: 2500000
+                    videoBitsPerSecond: 8000000
                 });
                 
                 mediaRecorder.ondataavailable = function(event) {
@@ -688,25 +686,22 @@
         function drawStandaloneHealthBars() {
             healthBarCtx.clearRect(0, 0, healthBarCanvas.width, healthBarCanvas.height);
             
-            const barWidth = 350;
-            const barHeight = 60;
+            const barWidth = 800;
+            const barHeight = 100;
             const segmentCount = 4;
             const segmentWidth = barWidth / segmentCount;
-            const gap = 100;
+            const gap = 200;
             const yPosition = (healthBarCanvas.height - barHeight) / 2;
-            const cornerRadius = 8;
+            const cornerRadius = 12;
             
-            // Draw Blue Health Bar with rounded corners
-            const blueX = 50;
+            const blueX = 100;
             for (let i = 0; i < segmentCount; i++) {
                 const x = blueX + (i * segmentWidth);
                 
                 healthBarCtx.save();
                 healthBarCtx.beginPath();
                 
-                // Create rounded rectangle path for each segment
                 if (i === 0) {
-                    // First segment - round left corners
                     healthBarCtx.moveTo(x + cornerRadius, yPosition);
                     healthBarCtx.lineTo(x + segmentWidth, yPosition);
                     healthBarCtx.lineTo(x + segmentWidth, yPosition + barHeight);
@@ -715,7 +710,6 @@
                     healthBarCtx.lineTo(x, yPosition + cornerRadius);
                     healthBarCtx.arc(x + cornerRadius, yPosition + cornerRadius, cornerRadius, Math.PI, Math.PI * 1.5);
                 } else if (i === segmentCount - 1) {
-                    // Last segment - round right corners
                     healthBarCtx.moveTo(x, yPosition);
                     healthBarCtx.lineTo(x + segmentWidth - cornerRadius, yPosition);
                     healthBarCtx.arc(x + segmentWidth - cornerRadius, yPosition + cornerRadius, cornerRadius, Math.PI * 1.5, 0);
@@ -724,7 +718,6 @@
                     healthBarCtx.lineTo(x, yPosition + barHeight);
                     healthBarCtx.lineTo(x, yPosition);
                 } else {
-                    // Middle segments - no rounding
                     healthBarCtx.rect(x, yPosition, segmentWidth, barHeight);
                 }
                 
@@ -733,17 +726,15 @@
                 
                 if (i < blueSquareHealth) {
                     healthBarCtx.fillStyle = standaloneColors.blueSegments[i];
-                } 
-                else {
+                } else {
                     healthBarCtx.fillStyle = standaloneColors.empty;
                 }
                 healthBarCtx.fillRect(x, yPosition, segmentWidth, barHeight);
                 
                 healthBarCtx.restore();
                 
-                // Draw border
                 healthBarCtx.strokeStyle = standaloneColors.border;
-                healthBarCtx.lineWidth = 3;
+                healthBarCtx.lineWidth = 4;
                 healthBarCtx.beginPath();
                 
                 if (i === 0) {
@@ -770,7 +761,6 @@
                 healthBarCtx.stroke();
             }
             
-            // Draw Red Health Bar with rounded corners
             const redX = blueX + barWidth + gap;
             for (let i = 0; i < segmentCount; i++) {
                 const x = redX + (i * segmentWidth);
@@ -810,9 +800,8 @@
                 
                 healthBarCtx.restore();
                 
-                // Draw border
                 healthBarCtx.strokeStyle = standaloneColors.border;
-                healthBarCtx.lineWidth = 3;
+                healthBarCtx.lineWidth = 4;
                 healthBarCtx.beginPath();
                 
                 if (i === 0) {
@@ -839,12 +828,11 @@
                 healthBarCtx.stroke();
             }
             
-            // Draw labels
             healthBarCtx.fillStyle = standaloneColors.border;
-            healthBarCtx.font = 'bold 16px Arial';
+            healthBarCtx.font = 'bold 24px Arial';
             healthBarCtx.textAlign = 'center';
-            healthBarCtx.fillText('Blue Square', blueX + barWidth / 2, yPosition - 10);
-            healthBarCtx.fillText('Red Square', redX + barWidth / 2, yPosition - 10);
+            healthBarCtx.fillText('Blue Square', blueX + barWidth / 2, yPosition - 20);
+            healthBarCtx.fillText('Red Square', redX + barWidth / 2, yPosition - 20);
         }
         
         function downloadHealthBars() {
@@ -1515,7 +1503,8 @@
             const redPos = getRandomSquarePosition();
             
             let attempts = 0;
-            while (Math.abs(bluePos.x - redPos.x) < 200 && Math.abs(bluePos.y - redPos.y) < 200 && attempts < 10) {
+            while (Math.abs(bluePos.x - redPos.x) < 200 && Math.abs(bluePos.y - redPos.y) < 200 && attempts < 10)
+        {
                 const newRedPos = getRandomSquarePosition();
                 redPos.x = newRedPos.x;
                 redPos.y = newRedPos.y;
