@@ -69,6 +69,7 @@
         #healthBarCanvas {
             border: 2px solid #666;
             margin-top: 20px;
+            background-color: #FCFEFE;
         }
         .controls {
             display: flex;
@@ -684,7 +685,9 @@
         downloadVideoBtn.addEventListener('click', downloadVideo);
         
         function drawStandaloneHealthBars() {
-            healthBarCtx.clearRect(0, 0, healthBarCanvas.width, healthBarCanvas.height);
+            // Fill background with #FCFEFE
+            healthBarCtx.fillStyle = '#FCFEFE';
+            healthBarCtx.fillRect(0, 0, healthBarCanvas.width, healthBarCanvas.height);
             
             const barWidth = 800;
             const barHeight = 100;
@@ -692,7 +695,7 @@
             const segmentWidth = barWidth / segmentCount;
             const gap = 200;
             const yPosition = (healthBarCanvas.height - barHeight) / 2;
-            const cornerRadius = 12;
+            const cornerRadius = 25;  // Increased from 12 to 25 for more rounded corners
             
             const blueX = 100;
             for (let i = 0; i < segmentCount; i++) {
@@ -1499,12 +1502,11 @@
         }
         
         function initializeSquares() {
-            const bluePos = getRandomSquarePosition();
+            const bluePos= getRandomSquarePosition();
             const redPos = getRandomSquarePosition();
             
             let attempts = 0;
-            while (Math.abs(bluePos.x - redPos.x) < 200 && Math.abs(bluePos.y - redPos.y) < 200 && attempts < 10)
-        {
+            while (Math.abs(bluePos.x - redPos.x) < 200 && Math.abs(bluePos.y - redPos.y) < 200 && attempts < 10) {
                 const newRedPos = getRandomSquarePosition();
                 redPos.x = newRedPos.x;
                 redPos.y = newRedPos.y;
