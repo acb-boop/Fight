@@ -304,6 +304,7 @@
             <button id="pauseBtn">Pause</button>
             <button id="speedBtn">Speed: 1x</button>
             <button id="fullscreenBtn" class="fullscreen-btn">Fullscreen</button>
+            <button id="clearTrailsBtn" class="restore-btn">Clear Trails</button>
         </div>
         <div class="health-color-controls">
             <div class="health-color-group">
@@ -407,11 +408,15 @@
         
         const healthBarCanvas = document.getElementById('healthBarCanvas');
         const healthBarCtx = healthBarCanvas.getContext('2d');
+
+        const TRAIL_LIFETIME = 700; // in milliseconds
+        const TRAIL_SPAWN_RATE = 50; // in milliseconds
         
         const resetBtn = document.getElementById('resetBtn');
         const pauseBtn = document.getElementById('pauseBtn');
         const speedBtn = document.getElementById('speedBtn');
         const fullscreenBtn = document.getElementById('fullscreenBtn');
+        const clearTrailsBtn = document.getElementById('clearTrailsBtn');
         const startAudioBtn = document.getElementById('startAudioBtn');
         const downloadAudioBtn = document.getElementById('downloadAudioBtn');
         const downloadHealthBarsBtn = document.getElementById('downloadHealthBarsBtn');
@@ -546,6 +551,112 @@
         
         let knifeSpawnInterval = null;
         let healSpawnInterval = null;
+        
+        // Trail variables
+        let frameCount = 0;
+        const trailParticles = [];
+        let activeTrails = 0;
+
+        // Store last trail time for each square
+        let lastTrailTimes = {
+            blue: 0,
+            red: 0
+        };
+
+        // Trail particle class
+        class TrailParticle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.size = Math.random() * 8 + 4;
+                this.color = color;
+                this.life = 1.0;
+                this.decay = Math.random() * 0.02 + 0.01;
+                this.vx = (Math.random() - 0.5) * 2;
+                this.vy = (Math.random() - 0.5) * 2;
+            }
+            
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life -= this.decay;
+                this.size *= 0.995;
+                return this.life > 0 && this.size > 0.1;
+            }
+            
+            draw(ctx) {
+                ctx.save();
+                ctx.globalAlpha = this.life;
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function createTrail(square) {
+            const currentTime = Date.now();
+            const squareType = square.isBlue ? 'blue' : 'red';
+            
+            // Only create trails every TRAIL_SPAWN_RATE milliseconds for each square individually
+            if (currentTime - lastTrailTimes[squareType] < TRAIL_SPAWN_RATE) {
+                return;
+            }
+            
+            lastTrailTimes[squareType] = currentTime;
+            
+            // Create trail particles slightly off-center based on movement direction
+            const offsetX = (Math.random() - 0.5) * square.size * 0.6; // Random offset within 60% of square size
+            const offsetY = (Math.random() - 0.5) * square.size * 0.6;
+            
+            // Add slight bias in the direction of movement
+            const directionBias = 0.3;
+            const biasedOffsetX = offsetX + (square.vx > 0 ? directionBias : -directionBias) * square.size * 0.2;
+            const biasedOffsetY = offsetY + (square.vy > 0 ? directionBias : -directionBias) * square.size * 0.2;
+            
+            const trailX = square.x + square.size / 2 + biasedOffsetX;
+            const trailY = square.y + square.size / 2 + biasedOffsetY;
+            
+            // Use the health bar colors for trails
+            const trailColor = square.isBlue ? blueHealthColor : redHealthColor;
+            
+            // Create multiple particles for better trail effect
+            for (let i = 0; i < 2; i++) {
+                // Add some variation to particle positions
+                const particleX = trailX + (Math.random() - 0.5) * square.size * 0.3;
+                const particleY = trailY + (Math.random() - 0.5) * square.size * 0.3;
+                
+                const particle = new TrailParticle(particleX, particleY, trailColor);
+                trailParticles.push(particle);
+                activeTrails++;
+            }
+        }
+
+        function updateTrails() {
+            for (let i = trailParticles.length - 1; i >= 0; i--) {
+                if (!trailParticles[i].update()) {
+                    trailParticles.splice(i, 1);
+                    activeTrails--;
+                }
+            }
+        }
+
+        function drawTrails() {
+            trailParticles.forEach(particle => {
+                particle.draw(ctx);
+            });
+        }
+
+        function clearTrails() {
+            trailParticles.length = 0;
+            activeTrails = 0;
+            // Reset trail times when clearing
+            lastTrailTimes.blue = 0;
+            lastTrailTimes.red = 0;
+        }
         
         function setupSegmentColorListeners(textInput, pickerInput, segmentIndex, isBlue) {
             textInput.addEventListener('input', function() {
@@ -1504,6 +1615,8 @@
         function initializeSquares() {
             const bluePos= getRandomSquarePosition();
             const redPos = getRandomSquarePosition();
+
+            clearTrails();
             
             let attempts = 0;
             while (Math.abs(bluePos.x - redPos.x) < 200 && Math.abs(bluePos.y - redPos.y) < 200 && attempts < 10) {
@@ -1716,11 +1829,18 @@
             
             const currentTime = Date.now();
             
+            // Update trails
+            updateTrails();
+            
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             if (canvasBackgroundColor !== '#ffffff') {
                 ctx.fillStyle = canvasBackgroundColor;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
             }
+            
+            // Add semi-transparent overlay for trail fade effect
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
             
             if (countdownActive) {
                 ctx.save();
@@ -1746,6 +1866,9 @@
             }
             
             drawCollisionFrame();
+            
+            // Draw trails
+            drawTrails();
             
             powerUps.forEach(powerUp => {
                 if (powerUp.type === 'knife' && knifeImageReady) {
@@ -1804,6 +1927,12 @@
                 
                 square.x += square.vx * speedMultiplier;
                 square.y += square.vy * speedMultiplier;
+                
+                // Create trail for moving square - remove the timing check here
+                // since it's already handled inside createTrail function
+                if (!isPaused && !countdownActive && gameStarted && square.size > 0) {
+                    createTrail(square);
+                }
                 
                 if (square.x <= frameBounds.left || square.x + square.size >= frameBounds.right) {
                     square.vx *= -1;
@@ -1892,6 +2021,7 @@
         }
 
         function animate() {
+            frameCount++;
             update();
             requestAnimationFrame(animate);
         }
@@ -1976,6 +2106,7 @@
             
             redParticles.clear();
             blueParticles.clear();
+            clearTrails();
             
             if (isTrackingAudio) {
                 simulationStartTime = Date.now();
@@ -2001,6 +2132,10 @@
 
         fullscreenBtn.addEventListener('click', function() {
             toggleFullscreen();
+        });
+
+        clearTrailsBtn.addEventListener('click', function() {
+            clearTrails();
         });
         
         redThornColorInput.addEventListener('input', function() {
