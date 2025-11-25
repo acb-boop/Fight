@@ -523,11 +523,12 @@
         const SPEED = 6;
         
         let loadedImages = 0;
-        const totalImages = 4;
+        const totalImages = 5; // Changed from 4 to 5 to include slow.png
         let redImageReady = false;
         let blueImageReady = false;
         let knifeImageReady = false;
         let healImageReady = false;
+        let slowImageReady = false; // Added for slow power-up
         
         const redSquareImg = new Image();
         redSquareImg.src = "red.png";
@@ -541,16 +542,22 @@
         const healImg = new Image();
         healImg.src = "heal.png";
         
+        const slowImg = new Image(); // Added for slow power-up
+        slowImg.src = "slow.png";
+        
         const RED_SQUARE_COLOR = '#e74c3c';
         const BLUE_SQUARE_COLOR = '#3498db';
         
         const KNIFE_SPAWN_INTERVAL = 8000;
         const HEAL_SPAWN_INTERVAL = 15000;
+        const SLOW_SPAWN_INTERVAL = 12000; // Added for slow power-up (12 seconds)
         const THORN_DURATION = 7000;
+        const SLOW_DURATION = 5000; // Added for slow power-up (5 seconds)
         const POWER_UP_SIZE = 60;
         
         let knifeSpawnInterval = null;
         let healSpawnInterval = null;
+        let slowSpawnInterval = null; // Added for slow power-up
         
         // Trail variables
         let frameCount = 0;
@@ -968,7 +975,7 @@
             try {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 
-                const soundFiles = ['blue.wav', 'red.wav', 'heal.wav', 'knife.wav', 'hit.wav'];
+                const soundFiles = ['blue.wav', 'red.wav', 'heal.wav', 'knife.wav', 'hit.wav', 'slow.wav']; // Added slow.wav
                 
                 for (const filename of soundFiles) {
                     try {
@@ -1251,6 +1258,20 @@
                     size: POWER_UP_SIZE * (isFullscreen ? fullscreenScale : 1),
                     type: 'heal',
                     img: healImg
+                });
+            }
+        }
+        
+        // Added slow power-up spawn function
+        function spawnSlowPowerUp() {
+            if (slowImageReady) {
+                const pos = getRandomPosition(POWER_UP_SIZE);
+                powerUps.push({
+                    x: pos.x,
+                    y: pos.y,
+                    size: POWER_UP_SIZE * (isFullscreen ? fullscreenScale : 1),
+                    type: 'slow',
+                    img: slowImg
                 });
             }
         }
@@ -1608,7 +1629,11 @@
                 thornExpiryTime: 0,
                 originalSize: size,
                 isBlue,
-                lastPlayTime: 0
+                lastPlayTime: 0,
+                // Added for slow effect
+                isSlowed: false,
+                slowExpiryTime: 0,
+                originalSpeed: speed
             };
         }
         
@@ -1875,8 +1900,11 @@
                     ctx.drawImage(knifeImg, powerUp.x, powerUp.y, powerUp.size, powerUp.size);
                 } else if (powerUp.type === 'heal' && healImageReady) {
                     ctx.drawImage(healImg, powerUp.x, powerUp.y, powerUp.size, powerUp.size);
+                } else if (powerUp.type === 'slow' && slowImageReady) {
+                    ctx.drawImage(slowImg, powerUp.x, powerUp.y, powerUp.size, powerUp.size);
                 } else {
-                    ctx.fillStyle = powerUp.type === 'knife' ? '#333' : '#2ecc71';
+                    ctx.fillStyle = powerUp.type === 'knife' ? '#333' : 
+                                   powerUp.type === 'heal' ? '#2ecc71' : '#9b59b6'; // Added slow color
                     ctx.fillRect(powerUp.x, powerUp.y, powerUp.size, powerUp.size);
                 }
             });
@@ -1902,6 +1930,25 @@
                             square.size = Math.min(maxSize, square.size + healAmount);
                             
                             playSound('heal');
+                        } else if (powerUp.type === 'slow') {
+                            // Apply slow effect
+                            square.isSlowed = true;
+                            square.slowExpiryTime = currentTime + SLOW_DURATION;
+                            
+                            // Reduce speed to 75%
+                            const currentSpeedMultiplier = 0.75;
+                            
+                            // Calculate current direction to preserve it
+                            const speedX = Math.abs(square.vx);
+                            const speedY = Math.abs(square.vy);
+                            const dirX = Math.sign(square.vx);
+                            const dirY = Math.sign(square.vy);
+                            
+                            // Apply slow effect
+                            square.vx = dirX * speedX * currentSpeedMultiplier;
+                            square.vy = dirY * speedY * currentSpeedMultiplier;
+                            
+                            playSound('slow');
                         }
                         
                         powerUpCollected = true;
@@ -1923,6 +1970,19 @@
                 
                 if (square.hasThorns && currentTime > square.thornExpiryTime) {
                     square.hasThorns = false;
+                }
+                
+                // Handle slow effect expiration
+                if (square.isSlowed && currentTime > square.slowExpiryTime) {
+                    square.isSlowed = false;
+                    
+                    // Restore original speed
+                    const baseSpeed = square.originalSpeed;
+                    const dirX = Math.sign(square.vx);
+                    const dirY = Math.sign(square.vy);
+                    
+                    square.vx = dirX * baseSpeed;
+                    square.vy = dirY * baseSpeed;
                 }
                 
                 square.x += square.vx * speedMultiplier;
@@ -1978,6 +2038,12 @@
                     ctx.drawImage(redSquareImg, square.x, square.y, square.size, square.size);
                 } else {
                     ctx.fillStyle = square.isBlue ? BLUE_SQUARE_COLOR : RED_SQUARE_COLOR;
+                    ctx.fillRect(square.x, square.y, square.size, square.size);
+                }
+                
+                // Add grey overlay for slowed squares
+                if (square.isSlowed) {
+                    ctx.fillStyle = 'rgba(128, 128, 128, 0.25)'; // 25% opacity grey
                     ctx.fillRect(square.x, square.y, square.size, square.size);
                 }
                 
@@ -2069,6 +2135,16 @@
             console.log("Heal image failed to load");
             imageLoaded(); 
         };
+        
+        // Added for slow power-up
+        slowImg.onload = () => { 
+            slowImageReady = true; 
+            imageLoaded(); 
+        };
+        slowImg.onerror = () => { 
+            console.log("Slow image failed to load");
+            imageLoaded(); 
+        };
 
         setTimeout(() => {
             if (loadedImages < totalImages) {
@@ -2083,6 +2159,7 @@
             drawStandaloneHealthBars();
             knifeSpawnInterval = setInterval(spawnKnifePowerUp, KNIFE_SPAWN_INTERVAL);
             healSpawnInterval = setInterval(spawnHealPowerUp, HEAL_SPAWN_INTERVAL);
+            slowSpawnInterval = setInterval(spawnSlowPowerUp, SLOW_SPAWN_INTERVAL); // Added slow spawn
         }
 
         updateHealthBar(redHealthBar, redSquareHealth, 4, redHealthColor);
@@ -2091,6 +2168,7 @@
         resetBtn.addEventListener('click', function() {
             if (knifeSpawnInterval) clearInterval(knifeSpawnInterval);
             if (healSpawnInterval) clearInterval(healSpawnInterval);
+            if (slowSpawnInterval) clearInterval(slowSpawnInterval); // Added slow interval clear
             
             squares = initializeSquares();
             powerUps = [];
@@ -2118,6 +2196,7 @@
             
             knifeSpawnInterval = setInterval(spawnKnifePowerUp, KNIFE_SPAWN_INTERVAL);
             healSpawnInterval = setInterval(spawnHealPowerUp, HEAL_SPAWN_INTERVAL);
+            slowSpawnInterval = setInterval(spawnSlowPowerUp, SLOW_SPAWN_INTERVAL); // Added slow spawn
         });
 
         pauseBtn.addEventListener('click', function() {
@@ -2165,4 +2244,4 @@
         });
     </script>
 </body>
-</html>
+    </html>
