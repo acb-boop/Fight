@@ -412,6 +412,20 @@
         const TRAIL_LIFETIME = 700; // in milliseconds
         const TRAIL_SPAWN_RATE = 50; // in milliseconds
         
+        // Trail configuration for easy size control
+        const TRAIL_CONFIG = {
+            normal: {
+                minSize: 4,
+                maxSize: 12,
+                sizeDecay: 0.995
+            },
+            speed: {
+                minSize: 6,
+                maxSize: 18,
+                sizeDecay: 0.990
+            }
+        };
+        
         const resetBtn = document.getElementById('resetBtn');
         const pauseBtn = document.getElementById('pauseBtn');
         const speedBtn = document.getElementById('speedBtn');
@@ -523,13 +537,13 @@
         const SPEED = 6;
         
         let loadedImages = 0;
-        const totalImages = 6; // Changed from 5 to 6 to include speed.png
+        const totalImages = 6;
         let redImageReady = false;
         let blueImageReady = false;
         let knifeImageReady = false;
         let healImageReady = false;
         let slowImageReady = false;
-        let speedImageReady = false; // Added for speed power-up
+        let speedImageReady = false;
         
         const redSquareImg = new Image();
         redSquareImg.src = "red.png";
@@ -546,7 +560,7 @@
         const slowImg = new Image();
         slowImg.src = "slow.png";
         
-        const speedImg = new Image(); // Added for speed power-up
+        const speedImg = new Image();
         speedImg.src = "speed.png";
         
         const RED_SQUARE_COLOR = '#e74c3c';
@@ -555,16 +569,16 @@
         const KNIFE_SPAWN_INTERVAL = 8000;
         const HEAL_SPAWN_INTERVAL = 15000;
         const SLOW_SPAWN_INTERVAL = 12000;
-        const SPEED_SPAWN_INTERVAL = 10000; // Added for speed power-up (10 seconds)
+        const SPEED_SPAWN_INTERVAL = 10000;
         const THORN_DURATION = 7000;
         const SLOW_DURATION = 5000;
-        const SPEED_DURATION = 6000; // Added for speed power-up (6 seconds)
+        const SPEED_DURATION = 6000;
         const POWER_UP_SIZE = 60;
         
         let knifeSpawnInterval = null;
         let healSpawnInterval = null;
         let slowSpawnInterval = null;
-        let speedSpawnInterval = null; // Added for speed power-up
+        let speedSpawnInterval = null;
         
         // Trail variables
         let frameCount = 0;
@@ -577,12 +591,16 @@
             red: 0
         };
 
-        // Trail particle class
+        // Updated TrailParticle class with better size control
         class TrailParticle {
             constructor(x, y, color, useImage = false, image = null) {
                 this.x = x;
                 this.y = y;
-                this.size = Math.random() * 8 + 4;
+                
+                // Use different size ranges based on whether it's a speed trail or normal trail
+                const config = useImage ? TRAIL_CONFIG.speed : TRAIL_CONFIG.normal;
+                this.size = Math.random() * (config.maxSize - config.minSize) + config.minSize;
+                
                 this.color = color;
                 this.life = 1.0;
                 this.decay = Math.random() * 0.02 + 0.01;
@@ -591,14 +609,15 @@
                 this.useImage = useImage;
                 this.image = image;
                 this.rotation = Math.random() * 360;
-                this.rotationSpeed = (Math.random() - 0.5) * 10;
+                this.rotationSpeed = (Math.random() - 0.5) * 8;
+                this.sizeDecay = config.sizeDecay;
             }
             
             update() {
                 this.x += this.vx;
                 this.y += this.vy;
                 this.life -= this.decay;
-                this.size *= 0.995;
+                this.size *= this.sizeDecay;
                 this.rotation += this.rotationSpeed;
                 return this.life > 0 && this.size > 0.1;
             }
@@ -638,7 +657,7 @@
             lastTrailTimes[squareType] = currentTime;
             
             // Create trail particles slightly off-center based on movement direction
-            const offsetX = (Math.random() - 0.5) * square.size * 0.6; // Random offset within 60% of square size
+            const offsetX = (Math.random() - 0.5) * square.size * 0.6;
             const offsetY = (Math.random() - 0.5) * square.size * 0.6;
             
             // Add slight bias in the direction of movement
@@ -839,7 +858,7 @@
             const segmentWidth = barWidth / segmentCount;
             const gap = 200;
             const yPosition = (healthBarCanvas.height - barHeight) / 2;
-            const cornerRadius = 25;  // Increased from 12 to 25 for more rounded corners
+            const cornerRadius = 25;
             
             const blueX = 100;
             for (let i = 0; i < segmentCount; i++) {
@@ -1001,7 +1020,7 @@
             try {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 
-                const soundFiles = ['blue.wav', 'red.wav', 'heal.wav', 'knife.wav', 'hit.wav', 'slow.wav', 'speed.wav']; // Added speed.wav
+                const soundFiles = ['blue.wav', 'red.wav', 'heal.wav', 'knife.wav', 'hit.wav', 'slow.wav', 'speed.wav'];
                 
                 for (const filename of soundFiles) {
                     try {
@@ -1149,7 +1168,7 @@
                 } else if (canvas.mozRequestFullScreen) {
                     canvas.mozRequestFullScreen();
                 } else if (canvas.msRequestFullscreen) {
-                    canvas.msRequestFullscreen();
+                    canvas.msRequestfullscreen();
                 }
             } else {
                 if (document.exitFullscreen) {
@@ -1301,7 +1320,6 @@
             }
         }
         
-        // Added speed power-up spawn function
         function spawnSpeedPowerUp() {
             if (speedImageReady) {
                 const pos = getRandomPosition(POWER_UP_SIZE);
@@ -1669,11 +1687,9 @@
                 originalSize: size,
                 isBlue,
                 lastPlayTime: 0,
-                // Added for slow effect
                 isSlowed: false,
                 slowExpiryTime: 0,
                 originalSpeed: speed,
-                // Added for speed effect
                 hasSpeed: false,
                 speedExpiryTime: 0
             };
@@ -1949,7 +1965,7 @@
                 } else {
                     ctx.fillStyle = powerUp.type === 'knife' ? '#333' : 
                                    powerUp.type === 'heal' ? '#2ecc71' : 
-                                   powerUp.type === 'slow' ? '#9b59b6' : '#f39c12'; // Added speed color
+                                   powerUp.type === 'slow' ? '#9b59b6' : '#f39c12';
                     ctx.fillRect(powerUp.x, powerUp.y, powerUp.size, powerUp.size);
                 }
             });
@@ -2065,8 +2081,7 @@
                 square.x += square.vx * speedMultiplier;
                 square.y += square.vy * speedMultiplier;
                 
-                // Create trail for moving square - remove the timing check here
-                // since it's already handled inside createTrail function
+                // Create trail for moving square
                 if (!isPaused && !countdownActive && gameStarted && square.size > 0) {
                     createTrail(square);
                 }
@@ -2109,6 +2124,7 @@
                     if (square.y + square.size >= frameBounds.bottom) square.y = frameBounds.bottom - square.size;
                 }
                 
+                // Draw the square first
                 if (square.isBlue && blueImageReady) {
                     ctx.drawImage(blueSquareImg, square.x, square.y, square.size, square.size);
                 } else if (!square.isBlue && redImageReady) {
@@ -2118,12 +2134,13 @@
                     ctx.fillRect(square.x, square.y, square.size, square.size);
                 }
                 
-                // Add grey overlay for slowed squares
+                // Add grey overlay for slowed squares - BEFORE the border
                 if (square.isSlowed) {
-                    ctx.fillStyle = 'rgba(128, 128, 128, 0.25)'; // 25% opacity grey
+                    ctx.fillStyle = 'rgba(128, 128, 128, 0.25)';
                     ctx.fillRect(square.x, square.y, square.size, square.size);
                 }
                 
+                // Draw border last so it's visible
                 ctx.strokeStyle = '#333';
                 ctx.lineWidth = 2 * (isFullscreen ? fullscreenScale : 1);
                 ctx.strokeRect(square.x, square.y, square.size, square.size);
@@ -2222,7 +2239,6 @@
             imageLoaded(); 
         };
         
-        // Added for speed power-up
         speedImg.onload = () => { 
             speedImageReady = true; 
             imageLoaded(); 
@@ -2246,7 +2262,7 @@
             knifeSpawnInterval = setInterval(spawnKnifePowerUp, KNIFE_SPAWN_INTERVAL);
             healSpawnInterval = setInterval(spawnHealPowerUp, HEAL_SPAWN_INTERVAL);
             slowSpawnInterval = setInterval(spawnSlowPowerUp, SLOW_SPAWN_INTERVAL);
-            speedSpawnInterval = setInterval(spawnSpeedPowerUp, SPEED_SPAWN_INTERVAL); // Added speed spawn
+            speedSpawnInterval = setInterval(spawnSpeedPowerUp, SPEED_SPAWN_INTERVAL);
         }
 
         updateHealthBar(redHealthBar, redSquareHealth, 4, redHealthColor);
@@ -2256,7 +2272,7 @@
             if (knifeSpawnInterval) clearInterval(knifeSpawnInterval);
             if (healSpawnInterval) clearInterval(healSpawnInterval);
             if (slowSpawnInterval) clearInterval(slowSpawnInterval);
-            if (speedSpawnInterval) clearInterval(speedSpawnInterval); // Added speed interval clear
+            if (speedSpawnInterval) clearInterval(speedSpawnInterval);
             
             squares = initializeSquares();
             powerUps = [];
@@ -2285,7 +2301,7 @@
             knifeSpawnInterval = setInterval(spawnKnifePowerUp, KNIFE_SPAWN_INTERVAL);
             healSpawnInterval = setInterval(spawnHealPowerUp, HEAL_SPAWN_INTERVAL);
             slowSpawnInterval = setInterval(spawnSlowPowerUp, SLOW_SPAWN_INTERVAL);
-            speedSpawnInterval = setInterval(spawnSpeedPowerUp, SPEED_SPAWN_INTERVAL); // Added speed spawn
+            speedSpawnInterval = setInterval(spawnSpeedPowerUp, SPEED_SPAWN_INTERVAL);
         });
 
         pauseBtn.addEventListener('click', function() {
@@ -2333,4 +2349,4 @@
         });
     </script>
 </body>
-</html>
+                        </html>
