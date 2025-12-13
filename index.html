@@ -709,6 +709,64 @@
             lastTrailTimes.blue = 0;
             lastTrailTimes.red = 0;
         }
+
+        // Function to restore square to normal speed
+        function restoreNormalSpeed(square) {
+            const baseSpeed = square.originalSpeed;
+            const dirX = Math.sign(square.vx);
+            const dirY = Math.sign(square.vy);
+            
+            square.vx = dirX * baseSpeed;
+            square.vy = dirY * baseSpeed;
+            square.isSlowed = false;
+            square.hasSpeed = false;
+        }
+
+        // Function to apply slow effect
+        function applySlowEffect(square) {
+            // Cancel any speed effect first
+            square.hasSpeed = false;
+            
+            // Apply slow effect
+            square.isSlowed = true;
+            square.slowExpiryTime = Date.now() + SLOW_DURATION;
+            
+            // Reduce speed to 75%
+            const currentSpeedMultiplier = 0.75;
+            
+            // Calculate current direction to preserve it
+            const speedX = Math.abs(square.vx);
+            const speedY = Math.abs(square.vy);
+            const dirX = Math.sign(square.vx);
+            const dirY = Math.sign(square.vy);
+            
+            // Apply slow effect
+            square.vx = dirX * speedX * currentSpeedMultiplier;
+            square.vy = dirY * speedY * currentSpeedMultiplier;
+        }
+
+        // Function to apply speed effect
+        function applySpeedEffect(square) {
+            // Cancel any slow effect first
+            square.isSlowed = false;
+            
+            // Apply speed effect
+            square.hasSpeed = true;
+            square.speedExpiryTime = Date.now() + SPEED_DURATION;
+            
+            // Increase speed to 125%
+            const currentSpeedMultiplier = 1.25;
+            
+            // Calculate current direction to preserve it
+            const speedX = Math.abs(square.vx);
+            const speedY = Math.abs(square.vy);
+            const dirX = Math.sign(square.vx);
+            const dirY = Math.sign(square.vy);
+            
+            // Apply speed effect
+            square.vx = dirX * speedX * currentSpeedMultiplier;
+            square.vy = dirY * speedY * currentSpeedMultiplier;
+        }
         
         function setupSegmentColorListeners(textInput, pickerInput, segmentIndex, isBlue) {
             textInput.addEventListener('input', function() {
@@ -1992,42 +2050,12 @@
                             
                             playSound('heal');
                         } else if (powerUp.type === 'slow') {
-                            // Apply slow effect
-                            square.isSlowed = true;
-                            square.slowExpiryTime = currentTime + SLOW_DURATION;
-                            
-                            // Reduce speed to 75%
-                            const currentSpeedMultiplier = 0.75;
-                            
-                            // Calculate current direction to preserve it
-                            const speedX = Math.abs(square.vx);
-                            const speedY = Math.abs(square.vy);
-                            const dirX = Math.sign(square.vx);
-                            const dirY = Math.sign(square.vy);
-                            
-                            // Apply slow effect
-                            square.vx = dirX * speedX * currentSpeedMultiplier;
-                            square.vy = dirY * speedY * currentSpeedMultiplier;
-                            
+                            // Apply slow effect (this will cancel any speed effect)
+                            applySlowEffect(square);
                             playSound('slow');
                         } else if (powerUp.type === 'speed') {
-                            // Apply speed effect
-                            square.hasSpeed = true;
-                            square.speedExpiryTime = currentTime + SPEED_DURATION;
-                            
-                            // Increase speed to 125%
-                            const currentSpeedMultiplier = 1.25;
-                            
-                            // Calculate current direction to preserve it
-                            const speedX = Math.abs(square.vx);
-                            const speedY = Math.abs(square.vy);
-                            const dirX = Math.sign(square.vx);
-                            const dirY = Math.sign(square.vy);
-                            
-                            // Apply speed effect
-                            square.vx = dirX * speedX * currentSpeedMultiplier;
-                            square.vy = dirY * speedY * currentSpeedMultiplier;
-                            
+                            // Apply speed effect (this will cancel any slow effect)
+                            applySpeedEffect(square);
                             playSound('speed');
                         }
                         
@@ -2048,34 +2076,19 @@
                     continue;
                 }
                 
+                // Handle effect expirations
                 if (square.hasThorns && currentTime > square.thornExpiryTime) {
                     square.hasThorns = false;
                 }
                 
                 // Handle slow effect expiration
                 if (square.isSlowed && currentTime > square.slowExpiryTime) {
-                    square.isSlowed = false;
-                    
-                    // Restore original speed
-                    const baseSpeed = square.originalSpeed;
-                    const dirX = Math.sign(square.vx);
-                    const dirY = Math.sign(square.vy);
-                    
-                    square.vx = dirX * baseSpeed;
-                    square.vy = dirY * baseSpeed;
+                    restoreNormalSpeed(square);
                 }
                 
                 // Handle speed effect expiration
                 if (square.hasSpeed && currentTime > square.speedExpiryTime) {
-                    square.hasSpeed = false;
-                    
-                    // Restore original speed
-                    const baseSpeed = square.originalSpeed;
-                    const dirX = Math.sign(square.vx);
-                    const dirY = Math.sign(square.vy);
-                    
-                    square.vx = dirX * baseSpeed;
-                    square.vy = dirY * baseSpeed;
+                    restoreNormalSpeed(square);
                 }
                 
                 square.x += square.vx * speedMultiplier;
@@ -2124,7 +2137,7 @@
                     if (square.y + square.size >= frameBounds.bottom) square.y = frameBounds.bottom - square.size;
                 }
                 
-                // Draw the square first
+                // FIXED: Draw the square image first
                 if (square.isBlue && blueImageReady) {
                     ctx.drawImage(blueSquareImg, square.x, square.y, square.size, square.size);
                 } else if (!square.isBlue && redImageReady) {
@@ -2134,9 +2147,9 @@
                     ctx.fillRect(square.x, square.y, square.size, square.size);
                 }
                 
-                // Add grey overlay for slowed squares - BEFORE the border
+                // FIXED: Then add 60% grey overlay on top
                 if (square.isSlowed) {
-                    ctx.fillStyle = 'rgba(128, 128, 128, 0.25)';
+                    ctx.fillStyle = 'rgba(128, 128, 128, 0.6)'; // 60% opacity grey
                     ctx.fillRect(square.x, square.y, square.size, square.size);
                 }
                 
@@ -2349,4 +2362,4 @@
         });
     </script>
 </body>
-                        </html>
+</html>
