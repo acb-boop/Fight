@@ -1639,38 +1639,24 @@
         });
         
         document.addEventListener('keydown', function(event) {
-            const key = event.key.toLowerCase();
-            
-            switch(key) {
-                case 'volumedown':
-                    event.preventDefault();
+                if (event.key === ' ') { // Spacebar
                     pauseBtn.click();
-                    break;
-                    
-                case 'volumeup':
-                    event.preventDefault();
+                } else if (event.key === 'r' || event.key === 'R') {
                     resetBtn.click();
-                    break;
-                    
-                case '1':
-                    event.preventDefault();
+                } else if (event.key === 'f' || event.key === 'F') {
+                    fullscreenBtn.click();
+                } else if (event.key === '1') {
                     speedMultiplier = 1;
                     speedBtn.textContent = 'Speed: 1x';
-                    break;
-                    
-                case '2':
-                    event.preventDefault();
+                } else if (event.key === '2') {
                     speedMultiplier = 2;
                     speedBtn.textContent = 'Speed: 2x';
-                    break;
-                    
-                case '3':
-                    event.preventDefault();
+                } else if (event.key === '3') {
                     speedMultiplier = 3;
                     speedBtn.textContent = 'Speed: 3x';
-                    break;
-            }
-        });
+                }
+                });
+
         
         document.addEventListener('keydown', function(event) {
             if (event.key === 'AudioVolumeDown' || event.keyCode === 174) {
