@@ -65,6 +65,7 @@
         }
         canvas:fullscreen {
             object-fit: contain;
+            background-color: #151617 !important;
         }
         #healthBarCanvas {
             border: 2px solid #666;
@@ -1865,6 +1866,9 @@
                 canvas.style.height = '100vh';
                 canvas.style.objectFit = 'contain';
                 
+                // Set dark gray background for fullscreen
+                canvas.style.backgroundColor = '#151617';
+                
                 const scaleX = canvas.width / originalCanvasSize.width;
                 const scaleY = canvas.height / originalCanvasSize.height;
                 fullscreenScale = Math.min(scaleX, scaleY);
@@ -1901,6 +1905,7 @@
                 canvas.style.width = originalCanvasStyle.width;
                 canvas.style.height = originalCanvasStyle.height;
                 canvas.style.objectFit = '';
+                canvas.style.backgroundColor = canvasBackgroundColor;
                 
                 frameBounds = {
                     left: 20,
@@ -2563,14 +2568,17 @@
             updateTrails();
             
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            if (canvasBackgroundColor !== '#ffffff') {
+            
+            // Draw background based on fullscreen state
+            if (isFullscreen) {
+                // For fullscreen, fill entire canvas with dark gray
+                ctx.fillStyle = '#151617';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            } else if (canvasBackgroundColor !== '#ffffff') {
+                // For normal mode, use the selected background color
                 ctx.fillStyle = canvasBackgroundColor;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
             }
-            
-            // Add semi-transparent overlay for trail fade effect
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
             
             if (countdownActive) {
                 ctx.save();
