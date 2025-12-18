@@ -65,7 +65,7 @@
         }
         canvas:fullscreen {
             object-fit: contain;
-            background-color: #151617 !important;
+            background-color: #212123 !important;
         }
         #healthBarCanvas {
             border: 2px solid #666;
@@ -1866,8 +1866,8 @@
                 canvas.style.height = '100vh';
                 canvas.style.objectFit = 'contain';
                 
-                // Set dark gray background for fullscreen
-                canvas.style.backgroundColor = '#151617';
+                // Set dark gray background for fullscreen (outside area)
+                canvas.style.backgroundColor = '#212123';
                 
                 const scaleX = canvas.width / originalCanvasSize.width;
                 const scaleY = canvas.height / originalCanvasSize.height;
@@ -2177,6 +2177,7 @@
             ctx.strokeStyle = frameColor;
             ctx.lineWidth = frameThickness * (isFullscreen ? fullscreenScale : 1);
             
+            // Draw the colored frame
             ctx.strokeRect(
                 frameBounds.left, 
                 frameBounds.top, 
@@ -2567,18 +2568,8 @@
             // Update trails
             updateTrails();
             
+            // Clear the canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Draw background based on fullscreen state
-            if (isFullscreen) {
-                // For fullscreen, fill entire canvas with dark gray
-                ctx.fillStyle = '#151617';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-            } else if (canvasBackgroundColor !== '#ffffff') {
-                // For normal mode, use the selected background color
-                ctx.fillStyle = canvasBackgroundColor;
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-            }
             
             if (countdownActive) {
                 ctx.save();
@@ -2601,6 +2592,27 @@
                 
                 ctx.restore();
                 return;
+            }
+            
+            // Draw background based on fullscreen state
+            if (isFullscreen) {
+                // For fullscreen: dark gray outside, white inside the frame
+                // Draw dark gray background for the entire canvas
+                ctx.fillStyle = '#212123';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw white rectangle for the play area inside the frame
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(
+                    frameBounds.left, 
+                    frameBounds.top, 
+                    frameBounds.right - frameBounds.left, 
+                    frameBounds.bottom - frameBounds.top
+                );
+            } else if (canvasBackgroundColor !== '#ffffff') {
+                // For normal mode, use the selected background color
+                ctx.fillStyle = canvasBackgroundColor;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
             }
             
             drawCollisionFrame();
@@ -2734,7 +2746,7 @@
                     if (square.y + square.size >= frameBounds.bottom) square.y = frameBounds.bottom - square.size;
                 }
                 
-                // FIXED: Draw the square image first
+                // Draw the square image
                 if (square.isBlue && blueImageReady) {
                     ctx.drawImage(blueSquareImg, square.x, square.y, square.size, square.size);
                 } else if (!square.isBlue && redImageReady) {
@@ -2744,13 +2756,13 @@
                     ctx.fillRect(square.x, square.y, square.size, square.size);
                 }
                 
-                // FIXED: Then add 60% grey overlay on top
+                // Add 60% grey overlay on top for slowed effect
                 if (square.isSlowed) {
                     ctx.fillStyle = 'rgba(128, 128, 128, 0.6)'; // 60% opacity grey
                     ctx.fillRect(square.x, square.y, square.size, square.size);
                 }
                 
-                // Draw border last so it's visible
+                // Draw border
                 ctx.strokeStyle = '#333';
                 ctx.lineWidth = 2 * (isFullscreen ? fullscreenScale : 1);
                 ctx.strokeRect(square.x, square.y, square.size, square.size);
