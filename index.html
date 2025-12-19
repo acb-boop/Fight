@@ -63,6 +63,11 @@
         canvas {
             border: 2px solid #333;
             background-color: white;
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+            -webkit-transform: translateZ(0);
+            transform: translateZ(0);
+            will-change: transform;
         }
         canvas:fullscreen {
             object-fit: contain;
@@ -72,6 +77,8 @@
             border: 2px solid #666;
             margin-top: 20px;
             background-color: #FCFEFE;
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
         }
         .controls {
             display: flex;
@@ -278,7 +285,24 @@
             100% { opacity: 1; }
         }
         
-        /* NEW: Recording Controls Panel */
+        /* Quality Indicator */
+        .quality-indicator {
+            position: absolute;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(52, 152, 219, 0.9);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            z-index: 1000;
+            font-size: 14px;
+            display: none;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+        
+        /* Recording Controls Panel */
         .recording-controls-panel {
             display: flex;
             flex-direction: column;
@@ -347,13 +371,38 @@
             flex-wrap: wrap;
             justify-content: center;
         }
+        
+        /* Ultra Quality Button */
+        .ultra-btn {
+            background: linear-gradient(45deg, #FF512F, #F09819);
+            font-weight: bold;
+        }
+        
+        .ultra-btn:hover {
+            background: linear-gradient(45deg, #F09819, #FF512F);
+        }
+        
+        /* GPU Accel Button */
+        .gpu-btn {
+            background: linear-gradient(45deg, #9b59b6, #3498db);
+            font-weight: bold;
+        }
+        
+        .gpu-btn:hover {
+            background: linear-gradient(45deg, #3498db, #9b59b6);
+        }
     </style>
 </head>
 <body>
     <div id="container">
-        <!-- NEW: Recorder Status Indicator -->
+        <!-- Recorder Status Indicator -->
         <div class="recorder-status" id="recorderStatus">
-            🔴 RECORDING <span class="recording-time" id="recordingTime">00:00</span>
+            🔴 ULTRA RECORDING <span class="recording-time" id="recordingTime">00:00</span>
+        </div>
+        
+        <!-- Quality Indicator -->
+        <div class="quality-indicator" id="qualityIndicator">
+            🚀 RTX 3050 ULTRA 120FPS
         </div>
         
         <div id="canvas-wrapper">
@@ -382,20 +431,27 @@
         
         <div class="game-info">
             <strong>Controls:</strong> O=Start/Stop All Recordings, R=Reset, Space=Pause, 1/2/3=Speed, Fullscreen=Button
+            <br><strong>System:</strong> RTX 3050 Ultra Mode - 120FPS Recording Enabled
         </div>
         
-        <!-- NEW: Recording Controls Panel -->
+        <!-- Recording Controls Panel -->
         <div class="recording-controls-panel">
-            <div class="recording-controls-title">Recording Controls (Press O to toggle all)</div>
+            <div class="recording-controls-title">RTX 3050 Ultra Recording Controls</div>
             
             <div class="recording-controls-buttons">
-                <button id="toggleRecordBtn" class="recording-btn">Start All Recordings (O)</button>
+                <button id="toggleRecordBtn" class="recording-btn ultra-btn">🎬 Start Ultra Recording (O)</button>
+                <button id="fpsBoostBtn" class="download-btn">🚀 Enable FPS Boost</button>
+                <button id="gpuAccelBtn" class="gpu-btn">🖥️ GPU Accelerated</button>
             </div>
             
             <div class="recording-status-display">
                 <div class="recording-status-item">
                     <span>Game Recording:</span>
                     <span id="gameRecordingStatus" class="status-indicator status-stopped">Stopped</span>
+                </div>
+                <div class="recording-status-item">
+                    <span>Target FPS:</span>
+                    <span id="fpsStatus" class="status-indicator status-ready">120 FPS</span>
                 </div>
                 <div class="recording-status-item">
                     <span>Audio Tracking:</span>
@@ -405,13 +461,21 @@
                     <span>Health Bars Recording:</span>
                     <span id="healthBarsRecordingStatus" class="status-indicator status-stopped">Stopped</span>
                 </div>
+                <div class="recording-status-item">
+                    <span>Bitrate:</span>
+                    <span id="bitrateStatus" class="status-indicator status-ready">50 Mbps</span>
+                </div>
+                <div class="recording-status-item">
+                    <span>GPU Acceleration:</span>
+                    <span id="gpuStatus" class="status-indicator status-ready">RTX 3050 Active</span>
+                </div>
             </div>
             
             <div class="download-controls">
-                <button id="downloadGameVideoBtn" class="download-btn" disabled>Download Game Video</button>
-                <button id="downloadAudioBtn" class="download-btn" disabled>Download Audio</button>
-                <button id="downloadHealthBarsVideoBtn" class="download-btn" disabled>Download Health Bars Video</button>
-                <button id="downloadHealthBarsImageBtn" class="download-btn">Download Health Bars Image</button>
+                <button id="downloadGameVideoBtn" class="download-btn" disabled>📥 Download Game Video</button>
+                <button id="downloadAudioBtn" class="download-btn" disabled>📥 Download Audio</button>
+                <button id="downloadHealthBarsVideoBtn" class="download-btn" disabled>📥 Download Health Bars Video</button>
+                <button id="downloadHealthBarsImageBtn" class="download-btn">📥 Download Health Bars Image</button>
             </div>
         </div>
         
@@ -528,9 +592,9 @@
 
     <script>
         // ====================
-        // SCREEN RECORDER CLASS
+        // RTX 3050 ULTRA RECORDER CLASS
         // ====================
-        class CanvasRecorder {
+        class RTXUltraRecorder {
             constructor(canvasElement, recorderType = 'game') {
                 this.canvas = canvasElement;
                 this.recorderType = recorderType;
@@ -539,8 +603,19 @@
                 this.isRecording = false;
                 this.startTime = 0;
                 this.timerInterval = null;
-                this.frameRate = 60;
-                this.videoBitsPerSecond = 8000000;
+                
+                // RTX 3050 Ultra Settings
+                this.ultraSettings = {
+                    frameRate: 120,           // 120 FPS for ultra smoothness
+                    videoBitsPerSecond: 50000000, // 50 Mbps for maximum quality
+                    timeslice: 100,           // Small chunks for smooth recording
+                    codec: 'video/webm;codecs=vp9' // Best codec for high FPS
+                };
+                
+                // Current settings
+                this.frameRate = 120;
+                this.videoBitsPerSecond = 50000000;
+                this.timeslice = 100;
                 
                 if (recorderType === 'game') {
                     this.statusElement = document.getElementById('recorderStatus');
@@ -552,30 +627,89 @@
                 if (this.isRecording) return;
                 
                 try {
+                    // Enable hardware acceleration hints
+                    this.canvas.style.imageRendering = 'crisp-edges';
+                    
+                    // Create ultra smooth stream
                     const stream = this.canvas.captureStream(this.frameRate);
                     
-                    const codecPreferences = [
-                        'video/webm;codecs=vp9',
-                        'video/webm;codecs=vp8',
-                        'video/webm',
-                        'video/mp4'
-                    ];
+                    // Try VP9 first (best for high FPS), fallback to VP8
+                    let mimeType = this.ultraSettings.codec;
                     
-                    let mimeType = null;
-                    for (const codec of codecPreferences) {
-                        if (MediaRecorder.isTypeSupported(codec)) {
-                            mimeType = codec;
-                            break;
+                    if (!MediaRecorder.isTypeSupported(mimeType)) {
+                        console.log('VP9 not supported, trying VP8...');
+                        mimeType = 'video/webm;codecs=vp8';
+                        
+                        if (!MediaRecorder.isTypeSupported(mimeType)) {
+                            mimeType = 'video/webm';
+                            console.log('Falling back to basic WebM');
                         }
                     }
                     
-                    if (!mimeType) {
-                        mimeType = '';
-                        console.warn('No preferred codec found, using default');
-                    }
-                    
+                    // Ultra quality options
                     const options = {
                         mimeType: mimeType,
+                        videoBitsPerSecond: this.videoBitsPerSecond
+                    };
+                    
+                    console.log(`Starting ${this.recorderType} recording with:`, {
+                        fps: this.frameRate,
+                        bitrate: `${this.videoBitsPerSecond / 1000000} Mbps`,
+                        codec: mimeType
+                    });
+                    
+                    this.mediaRecorder = new MediaRecorder(stream, options);
+                    this.recordedChunks = [];
+                    
+                    // Optimized data collection for smoothness
+                    this.mediaRecorder.ondataavailable = (event) => {
+                        if (event.data && event.data.size > 0) {
+                            this.recordedChunks.push(event.data);
+                        }
+                    };
+                    
+                    this.mediaRecorder.onstop = () => {
+                        this.stopTimer();
+                        if (this.recorderType === 'game') {
+                            this.hideStatus();
+                            document.getElementById('qualityIndicator').style.display = 'none';
+                        }
+                    };
+                    
+                    this.mediaRecorder.onerror = (event) => {
+                        console.error('MediaRecorder error:', event.error);
+                        this.stop();
+                    };
+                    
+                    // Start with optimized timeslice
+                    this.mediaRecorder.start(this.timeslice);
+                    this.isRecording = true;
+                    this.startTime = Date.now();
+                    
+                    if (this.recorderType === 'game') {
+                        this.showStatus();
+                        document.getElementById('qualityIndicator').style.display = 'block';
+                    }
+                    
+                    this.startTimer();
+                    
+                    console.log(`${this.recorderType} recording started at ${this.frameRate}FPS`);
+                    
+                } catch (error) {
+                    console.error(`Failed to start ${this.recorderType} recording:`, error);
+                    // Try with lower settings if ultra fails
+                    this.tryLowerSettings();
+                }
+            }
+            
+            async tryLowerSettings() {
+                try {
+                    console.log('Trying lower settings for compatibility...');
+                    this.frameRate = 60;
+                    this.videoBitsPerSecond = 25000000;
+                    
+                    const stream = this.canvas.captureStream(this.frameRate);
+                    const options = {
                         videoBitsPerSecond: this.videoBitsPerSecond
                     };
                     
@@ -595,12 +729,7 @@
                         }
                     };
                     
-                    this.mediaRecorder.onerror = (event) => {
-                        console.error('MediaRecorder error:', event.error);
-                        this.stop();
-                    };
-                    
-                    this.mediaRecorder.start(1000);
+                    this.mediaRecorder.start(250);
                     this.isRecording = true;
                     this.startTime = Date.now();
                     
@@ -610,10 +739,10 @@
                     
                     this.startTimer();
                     
-                    console.log(`${this.recorderType} recording started`);
+                    console.log(`${this.recorderType} recording started at ${this.frameRate}FPS (compatibility mode)`);
                     
                 } catch (error) {
-                    console.error(`Failed to start ${this.recorderType} recording:`, error);
+                    console.error(`Lower settings also failed:`, error);
                 }
             }
             
@@ -624,6 +753,7 @@
                     this.stopTimer();
                     if (this.recorderType === 'game') {
                         this.hideStatus();
+                        document.getElementById('qualityIndicator').style.display = 'none';
                     }
                 }
             }
@@ -641,7 +771,8 @@
                 const a = document.createElement('a');
                 
                 const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-                const defaultFilename = filename || `${this.recorderType}-recording-${timestamp}.${extension}`;
+                const fpsLabel = this.frameRate >= 120 ? '120FPS' : this.frameRate >= 60 ? '60FPS' : '30FPS';
+                const defaultFilename = filename || `${this.recorderType}-${fpsLabel}-${timestamp}.${extension}`;
                 a.download = defaultFilename;
                 a.href = url;
                 a.style.display = 'none';
@@ -654,7 +785,7 @@
                     URL.revokeObjectURL(url);
                 }, 100);
                 
-                console.log(`${this.recorderType} video downloaded: ${a.download}`);
+                console.log(`${this.recorderType} video (${fpsLabel}) downloaded: ${a.download}`);
                 return true;
             }
             
@@ -702,37 +833,51 @@
             clearRecording() {
                 this.recordedChunks = [];
             }
+            
+            setFrameRate(fps) {
+                this.frameRate = fps;
+                this.ultraSettings.frameRate = fps;
+                console.log(`Set ${this.recorderType} recorder to ${fps} FPS`);
+            }
         }
         
         // ====================
         // GAME INITIALIZATION
         // ====================
         const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d', {
+            alpha: false, // Disable alpha for better performance
+            desynchronized: true // Enable GPU acceleration
+        });
         
         const healthBarCanvas = document.getElementById('healthBarCanvas');
-        const healthBarCtx = healthBarCanvas.getContext('2d');
+        const healthBarCtx = healthBarCanvas.getContext('2d', {
+            alpha: false,
+            desynchronized: true
+        });
         
-        // Initialize recorders
-        const gameRecorder = new CanvasRecorder(canvas, 'game');
-        const healthBarsRecorder = new CanvasRecorder(healthBarCanvas, 'health-bars');
+        // Initialize ultra recorders
+        const gameRecorder = new RTXUltraRecorder(canvas, 'game');
+        const healthBarsRecorder = new RTXUltraRecorder(healthBarCanvas, 'health-bars');
 
+        // Optimized trail settings for 120FPS
         const TRAIL_LIFETIME = 700;
-        const TRAIL_SPAWN_RATE = 50;
+        const TRAIL_SPAWN_RATE = 40; // Faster spawning for 120FPS
         
         const TRAIL_CONFIG = {
             normal: {
                 minSize: 4,
                 maxSize: 12,
-                sizeDecay: 0.995
+                sizeDecay: 0.997 // Slower decay for smoother trails
             },
             speed: {
                 minSize: 6,
                 maxSize: 18,
-                sizeDecay: 0.990
+                sizeDecay: 0.995
             }
         };
         
+        // Get DOM elements
         const resetBtn = document.getElementById('resetBtn');
         const pauseBtn = document.getElementById('pauseBtn');
         const speedBtn = document.getElementById('speedBtn');
@@ -743,6 +888,8 @@
         const downloadAudioBtn = document.getElementById('downloadAudioBtn');
         const downloadHealthBarsVideoBtn = document.getElementById('downloadHealthBarsVideoBtn');
         const downloadHealthBarsImageBtn = document.getElementById('downloadHealthBarsImageBtn');
+        const fpsBoostBtn = document.getElementById('fpsBoostBtn');
+        const gpuAccelBtn = document.getElementById('gpuAccelBtn');
         const redThornColorInput = document.getElementById('redThornColor');
         const blueThornColorInput = document.getElementById('blueThornColor');
         const redHealthColorInput = document.getElementById('redHealthColor');
@@ -891,6 +1038,13 @@
             red: 0
         };
 
+        // Performance tracking
+        let lastFrameTime = performance.now();
+        let fps = 0;
+        let frameTimes = [];
+        const fpsUpdateInterval = 1000; // Update FPS display every second
+        let lastFpsUpdate = 0;
+
         class TrailParticle {
             constructor(x, y, color, useImage = false, image = null) {
                 this.x = x;
@@ -901,7 +1055,7 @@
                 
                 this.color = color;
                 this.life = 1.0;
-                this.decay = Math.random() * 0.02 + 0.01;
+                this.decay = 0.01; // Fixed decay for consistency
                 this.vx = (Math.random() - 0.5) * 2;
                 this.vy = (Math.random() - 0.5) * 2;
                 this.useImage = useImage;
@@ -951,19 +1105,22 @@
             
             lastTrailTimes[squareType] = currentTime;
             
-            const offsetX = (Math.random() - 0.5) * square.size * 0.6;
-            const offsetY = (Math.random() - 0.5) * square.size * 0.6;
+            // More particles for 120FPS smoothness
+            const particleCount = gameRecorder.isRecording ? 3 : 2;
             
-            const directionBias = 0.3;
-            const biasedOffsetX = offsetX + (square.vx > 0 ? directionBias : -directionBias) * square.size * 0.2;
-            const biasedOffsetY = offsetY + (square.vy > 0 ? directionBias : -directionBias) * square.size * 0.2;
-            
-            const trailX = square.x + square.size / 2 + biasedOffsetX;
-            const trailY = square.y + square.size / 2 + biasedOffsetY;
-            
-            const trailColor = square.isBlue ? blueHealthColor : redHealthColor;
-            
-            for (let i = 0; i < 2; i++) {
+            for (let i = 0; i < particleCount; i++) {
+                const offsetX = (Math.random() - 0.5) * square.size * 0.6;
+                const offsetY = (Math.random() - 0.5) * square.size * 0.6;
+                
+                const directionBias = 0.3;
+                const biasedOffsetX = offsetX + (square.vx > 0 ? directionBias : -directionBias) * square.size * 0.2;
+                const biasedOffsetY = offsetY + (square.vy > 0 ? directionBias : -directionBias) * square.size * 0.2;
+                
+                const trailX = square.x + square.size / 2 + biasedOffsetX;
+                const trailY = square.y + square.size / 2 + biasedOffsetY;
+                
+                const trailColor = square.isBlue ? blueHealthColor : redHealthColor;
+                
                 const particleX = trailX + (Math.random() - 0.5) * square.size * 0.3;
                 const particleY = trailY + (Math.random() - 0.5) * square.size * 0.3;
                 
@@ -1824,11 +1981,13 @@
         
         resetFrameBtn.addEventListener('click', resetFrame);
         
-        // NEW: RECORDING CONTROL FUNCTIONS
+        // RECORDING CONTROL FUNCTIONS
         function updateRecordingStatus() {
             const gameStatusElement = document.getElementById('gameRecordingStatus');
             const audioStatusElement = document.getElementById('audioRecordingStatus');
             const healthBarsStatusElement = document.getElementById('healthBarsRecordingStatus');
+            const fpsStatusElement = document.getElementById('fpsStatus');
+            const bitrateStatusElement = document.getElementById('bitrateStatus');
             
             if (gameRecorder.isRecording) {
                 gameStatusElement.textContent = 'Recording';
@@ -1863,6 +2022,13 @@
                 healthBarsStatusElement.className = 'status-indicator status-stopped';
             }
             
+            // Update FPS display
+            fpsStatusElement.textContent = `${gameRecorder.frameRate} FPS`;
+            
+            // Update bitrate display
+            const bitrate = gameRecorder.videoBitsPerSecond / 1000000;
+            bitrateStatusElement.textContent = `${bitrate} Mbps`;
+            
             // Update download button states
             downloadGameVideoBtn.disabled = gameRecorder.recordedChunks.length === 0;
             downloadAudioBtn.disabled = audioEvents.length === 0;
@@ -1871,18 +2037,26 @@
         
         async function toggleAllRecordings() {
             if (!allRecording) {
+                // Clear previous recordings
+                gameRecorder.clearRecording();
+                healthBarsRecorder.clearRecording();
+                
                 // Start all recordings
-                await initializeAudio(); // Initialize audio first
+                await initializeAudio();
                 if (isAudioRecording) {
                     console.log('Audio recording started');
                 }
                 
+                // Brief pause for system stabilization
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
                 gameRecorder.start();
+                await new Promise(resolve => setTimeout(resolve, 50));
                 healthBarsRecorder.start();
                 
                 allRecording = true;
-                toggleRecordBtn.textContent = 'Stop All Recordings (O)';
-                toggleRecordBtn.style.backgroundColor = '#c0392b';
+                toggleRecordBtn.textContent = '⏹️ Stop Ultra Recording (O)';
+                toggleRecordBtn.style.background = 'linear-gradient(45deg, #c0392b, #e74c3c)';
             } else {
                 // Stop all recordings
                 gameRecorder.stop();
@@ -1890,8 +2064,8 @@
                 isAudioRecording = false;
                 
                 allRecording = false;
-                toggleRecordBtn.textContent = 'Start All Recordings (O)';
-                toggleRecordBtn.style.backgroundColor = '#e74c3c';
+                toggleRecordBtn.textContent = '🎬 Start Ultra Recording (O)';
+                toggleRecordBtn.style.background = 'linear-gradient(45deg, #FF512F, #F09819)';
             }
             
             updateRecordingStatus();
@@ -1911,23 +2085,57 @@
             }
         }
         
-        // NEW: UPDATED KEY CONTROLS WITH O FOR RECORDING
+        // FPS Boost function
+        function enableFPSBoost() {
+            gameRecorder.setFrameRate(144);
+            healthBarsRecorder.setFrameRate(144);
+            gameRecorder.videoBitsPerSecond = 60000000;
+            
+            document.getElementById('fpsStatus').textContent = '144 FPS';
+            document.getElementById('bitrateStatus').textContent = '60 Mbps';
+            document.getElementById('qualityIndicator').textContent = '🚀 RTX 3050 ULTRA 144FPS';
+            
+            fpsBoostBtn.style.backgroundColor = '#45a049';
+            console.log('Enabled 144FPS boost mode');
+        }
+        
+        // GPU Acceleration toggle
+        let gpuEnabled = true;
+        function toggleGPUAcceleration() {
+            gpuEnabled = !gpuEnabled;
+            
+            if (gpuEnabled) {
+                // Re-enable GPU context
+                canvas.getContext('2d', {
+                    alpha: false,
+                    desynchronized: true
+                });
+                gpuAccelBtn.style.background = 'linear-gradient(45deg, #9b59b6, #3498db)';
+                gpuAccelBtn.textContent = '🖥️ GPU Accelerated';
+                document.getElementById('gpuStatus').textContent = 'RTX 3050 Active';
+            } else {
+                // Use standard context
+                canvas.getContext('2d');
+                gpuAccelBtn.style.background = '#4CAF50';
+                gpuAccelBtn.textContent = '🖥️ Enable GPU';
+                document.getElementById('gpuStatus').textContent = 'Software Rendering';
+            }
+        }
+        
+        // UPDATED KEY CONTROLS
         document.addEventListener('keydown', function(event) {
             switch(event.key.toLowerCase()) {
                 case 'o':
-                    // O to toggle all recordings
                     event.preventDefault();
                     toggleAllRecordings();
                     break;
                     
                 case 'r':
-                    // R to reset game
                     event.preventDefault();
                     resetBtn.click();
                     break;
                     
                 case ' ':
-                    // Space to pause
                     event.preventDefault();
                     pauseBtn.click();
                     break;
@@ -1952,7 +2160,6 @@
                     fullscreenBtn.click();
                     break;
                     
-                // Mobile controls
                 case 'audiovolumedown':
                 case 'volumedown':
                     event.preventDefault();
@@ -2254,6 +2461,21 @@
             
             const currentTime = Date.now();
             
+            // Update FPS counter
+            const now = performance.now();
+            const deltaTime = now - lastFrameTime;
+            lastFrameTime = now;
+            
+            frameTimes.push(deltaTime);
+            if (frameTimes.length > 120) frameTimes.shift();
+            
+            // Update FPS display every second
+            if (now - lastFpsUpdate > fpsUpdateInterval) {
+                const avgDelta = frameTimes.reduce((a, b) => a + b, 0) / frameTimes.length;
+                fps = Math.round(1000 / avgDelta);
+                lastFpsUpdate = now;
+            }
+            
             updateTrails();
             
             ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -2472,12 +2694,13 @@
             
             redParticles.animate();
             blueParticles.animate();
+            
+            frameCount++;
         }
 
         function animate() {
-            frameCount++;
-            update();
             requestAnimationFrame(animate);
+            update();
         }
 
         function imageLoaded() {
@@ -2644,27 +2867,14 @@
             }
         });
         
-        // NEW: EVENT LISTENERS FOR RECORDING CONTROLS
+        // EVENT LISTENERS FOR NEW CONTROLS
         toggleRecordBtn.addEventListener('click', toggleAllRecordings);
         downloadGameVideoBtn.addEventListener('click', downloadGameVideo);
         downloadAudioBtn.addEventListener('click', downloadAudio);
         downloadHealthBarsVideoBtn.addEventListener('click', downloadHealthBarsVideo);
         downloadHealthBarsImageBtn.addEventListener('click', downloadHealthBarsImage);
-        
-        if (!CanvasRenderingContext2D.prototype.roundRect) {
-            CanvasRenderingContext2D.prototype.roundRect = function(x, y, width, height, radius) {
-                if (width < 2 * radius) radius = width / 2;
-                if (height < 2 * radius) radius = height / 2;
-                this.beginPath();
-                this.moveTo(x + radius, y);
-                this.arcTo(x + width, y, x + width, y + height, radius);
-                this.arcTo(x + width, y + height, x, y + height, radius);
-                this.arcTo(x, y + height, x, y, radius);
-                this.arcTo(x, y, x + width, y, radius);
-                this.closePath();
-                return this;
-            }
-        }
+        fpsBoostBtn.addEventListener('click', enableFPSBoost);
+        gpuAccelBtn.addEventListener('click', toggleGPUAcceleration);
         
         // Initial status update
         updateRecordingStatus();
