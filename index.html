@@ -18,6 +18,7 @@
             flex-direction: column;
             align-items: center;
             gap: 20px;
+            position: relative;
         }
         #canvas-wrapper {
             position: relative;
@@ -428,10 +429,38 @@
             margin-top: 20px;
             background-color: #FCFEFE;
         }
+        
+        /* NEW: Recorder Status Styles */
+        .recorder-status {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 0, 0, 0.9);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            z-index: 1000;
+            font-size: 14px;
+            display: none;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            animation: pulse 1.5s infinite;
+        }
+        
+        .recording-time {
+            margin-left: 5px;
+            font-family: monospace;
+        }
     </style>
 </head>
 <body>
     <div id="container">
+        <!-- NEW: Recorder Status Indicator -->
+        <div class="recorder-status" id="recorderStatus">
+            🔴 RECORDING <span class="recording-time" id="recordingTime">00:00</span>
+        </div>
+        
         <div id="canvas-wrapper">
             <div class="health-bars">
                 <div class="health-bar">
@@ -457,7 +486,7 @@
         </div>
         
         <div class="game-info">
-            <strong>Mobile Controls:</strong> Volume Down=Pause, Volume Up=Reset, Button=Fullscreen, 1/2/3=Speed
+            <strong>Controls:</strong> F=Record, R=Reset, Space=Pause, 1/2/3=Speed, Fullscreen=Button
         </div>
         
         <div class="audio-controls">
@@ -626,6 +655,165 @@
     </div>
 
     <script>
+        // ====================
+        // NEW: SCREEN RECORDER CLASS
+        // ====================
+        class CanvasRecorder {
+            constructor(canvasElement) {
+                this.canvas = canvasElement;
+                this.mediaRecorder = null;
+                this.recordedChunks = [];
+                this.isRecording = false;
+                this.startTime = 0;
+                this.timerInterval = null;
+                this.frameRate = 60;
+                this.videoBitsPerSecond = 8000000;
+                
+                this.statusElement = document.getElementById('recorderStatus');
+                this.timeElement = document.getElementById('recordingTime');
+            }
+            
+            async start() {
+                if (this.isRecording) return;
+                
+                try {
+                    const stream = this.canvas.captureStream(this.frameRate);
+                    
+                    const codecPreferences = [
+                        'video/webm;codecs=vp9',
+                        'video/webm;codecs=vp8',
+                        'video/webm',
+                        'video/mp4'
+                    ];
+                    
+                    let mimeType = null;
+                    for (const codec of codecPreferences) {
+                        if (MediaRecorder.isTypeSupported(codec)) {
+                            mimeType = codec;
+                            break;
+                        }
+                    }
+                    
+                    if (!mimeType) {
+                        mimeType = '';
+                        console.warn('No preferred codec found, using default');
+                    }
+                    
+                    const options = {
+                        mimeType: mimeType,
+                        videoBitsPerSecond: this.videoBitsPerSecond
+                    };
+                    
+                    this.mediaRecorder = new MediaRecorder(stream, options);
+                    this.recordedChunks = [];
+                    
+                    this.mediaRecorder.ondataavailable = (event) => {
+                        if (event.data && event.data.size > 0) {
+                            this.recordedChunks.push(event.data);
+                        }
+                    };
+                    
+                    this.mediaRecorder.onstop = () => {
+                        this.download();
+                        this.stopTimer();
+                        this.hideStatus();
+                    };
+                    
+                    this.mediaRecorder.onerror = (event) => {
+                        console.error('MediaRecorder error:', event.error);
+                        alert('Recording error: ' + event.error);
+                        this.stop();
+                    };
+                    
+                    this.mediaRecorder.start(1000);
+                    this.isRecording = true;
+                    this.startTime = Date.now();
+                    
+                    this.showStatus();
+                    this.startTimer();
+                    
+                    console.log('Recording started with codec:', mimeType);
+                    
+                } catch (error) {
+                    console.error('Failed to start recording:', error);
+                    alert('Failed to start recording. Your browser may not support this feature.');
+                }
+            }
+            
+            stop() {
+                if (this.mediaRecorder && this.isRecording) {
+                    this.mediaRecorder.stop();
+                    this.isRecording = false;
+                    this.stopTimer();
+                    this.hideStatus();
+                }
+            }
+            
+            download() {
+                if (this.recordedChunks.length === 0) {
+                    console.warn('No video recorded');
+                    return;
+                }
+                
+                const mimeType = this.recordedChunks[0].type || 'video/webm';
+                const extension = mimeType.includes('mp4') ? 'mp4' : 'webm';
+                const blob = new Blob(this.recordedChunks, { type: mimeType });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                a.download = `bouncing-squares-${timestamp}.${extension}`;
+                a.href = url;
+                a.style.display = 'none';
+                
+                document.body.appendChild(a);
+                a.click();
+                
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 100);
+                
+                console.log(`Video downloaded: ${a.download}`);
+            }
+            
+            showStatus() {
+                this.statusElement.style.display = 'block';
+            }
+            
+            hideStatus() {
+                this.statusElement.style.display = 'none';
+            }
+            
+            startTimer() {
+                this.timerInterval = setInterval(() => {
+                    const elapsed = Date.now() - this.startTime;
+                    const minutes = Math.floor(elapsed / 60000);
+                    const seconds = Math.floor((elapsed % 60000) / 1000);
+                    this.timeElement.textContent = 
+                        `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                }, 250);
+            }
+            
+            stopTimer() {
+                if (this.timerInterval) {
+                    clearInterval(this.timerInterval);
+                    this.timerInterval = null;
+                }
+            }
+            
+            toggle() {
+                if (this.isRecording) {
+                    this.stop();
+                } else {
+                    this.start();
+                }
+            }
+        }
+        
+        // ====================
+        // GAME INITIALIZATION
+        // ====================
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         
@@ -639,11 +827,13 @@
         const animatedHealthOverlay = document.getElementById('animatedHealthOverlay');
         const animatedHealthParticles = document.getElementById('animatedHealthParticles');
         const animatedHealthText = document.getElementById('animatedHealthText');
-
-        const TRAIL_LIFETIME = 700; // in milliseconds
-        const TRAIL_SPAWN_RATE = 50; // in milliseconds
         
-        // Trail configuration for easy size control
+        // Initialize the recorder
+        const screenRecorder = new CanvasRecorder(canvas);
+
+        const TRAIL_LIFETIME = 700;
+        const TRAIL_SPAWN_RATE = 50;
+        
         const TRAIL_CONFIG = {
             normal: {
                 minSize: 4,
@@ -697,7 +887,6 @@
         const standaloneEmptyColor = document.getElementById('standaloneEmptyColor');
         const standaloneEmptyPicker = document.getElementById('standaloneEmptyPicker');
         
-        // Animated Health Bar Controls
         const startAnimationBtn = document.getElementById('startAnimationBtn');
         const startAnimatedRecordingBtn = document.getElementById('startAnimatedRecordingBtn');
         const stopAnimatedRecordingBtn = document.getElementById('stopAnimatedRecordingBtn');
@@ -834,18 +1023,15 @@
         let slowSpawnInterval = null;
         let speedSpawnInterval = null;
         
-        // Trail variables
         let frameCount = 0;
         const trailParticles = [];
         let activeTrails = 0;
 
-        // Store last trail time for each square
         let lastTrailTimes = {
             blue: 0,
             red: 0
         };
 
-        // Animated Particle Class
         class AnimatedParticle {
             constructor(x, y, color) {
                 this.x = x;
@@ -901,12 +1087,10 @@
             
             time += 0.02 * animationSpeedValue;
             
-            // Update health value for animation
             healthValue += healthDirection * 0.5 * animationSpeedValue;
             if (healthValue <= 20) healthDirection = 1;
             if (healthValue >= 100) healthDirection = -1;
             
-            // Apply current preset animation
             switch(currentPreset) {
                 case 'pulse':
                     applyPulseAnimation();
@@ -937,7 +1121,6 @@
             animatedHealthBar.style.transform = `scale(${pulseScale})`;
             animatedHealthBar.style.transition = 'transform 0.3s ease';
             
-            // Add glow effect
             const glowIntensity = 0.5 + 0.5 * Math.sin(time);
             animatedHealthBar.style.boxShadow = `0 0 ${20 * glowIntensity}px rgba(255, 107, 107, ${0.5 * glowIntensity})`;
         }
@@ -953,13 +1136,11 @@
             animatedHealthFill.style.height = `calc(100% + ${waveHeight}px)`;
             animatedHealthFill.style.transition = 'height 0.5s ease';
             
-            // Create wave effect on fill
             const gradientAngle = (time * 10) % 360;
             animatedHealthFill.style.background = `linear-gradient(${gradientAngle}deg, #ff6b6b, #ff8e53, #ffd166, #06d6a0, #118ab2)`;
         }
         
         function applyRainbowAnimation() {
-            // Animate gradient position
             const gradientPosition = (time * 20) % 100;
             animatedHealthFill.style.background = `linear-gradient(90deg, 
                 #ff6b6b ${gradientPosition}%, 
@@ -968,30 +1149,23 @@
                 #06d6a0 ${(gradientPosition + 60) % 100}%, 
                 #118ab2 ${(gradientPosition + 80) % 100}%)`;
             
-            // Add floating effect
             const floatY = 5 * Math.sin(time * 2);
             animatedHealthBar.style.transform = `translateY(${floatY}px)`;
         }
         
         function applyParticlesAnimation() {
-            // Create particles occasionally
             if (Math.random() < 0.3) {
                 const barRect = animatedHealthBar.getBoundingClientRect();
                 createParticles(3, barRect.left, barRect.top, barRect.width, barRect.height);
             }
             
-            // Add particle container animation
             animatedHealthParticles.style.opacity = 0.7 + 0.3 * Math.sin(time);
         }
         
         function drawAnimatedHealthBar() {
-            // Update text
             animatedHealthText.textContent = `${Math.round(healthValue)}%`;
-            
-            // Update fill width based on health
             animatedHealthFill.style.width = `${healthValue}%`;
             
-            // Update text color based on health
             if (healthValue > 70) {
                 animatedHealthText.style.color = '#ffffff';
             } else if (healthValue > 30) {
@@ -1004,11 +1178,9 @@
         function updateAnimatedCanvas() {
             if (!animatedHealthCanvas) return;
             
-            // Clear canvas
             animatedHealthCtx.fillStyle = '#FCFEFE';
             animatedHealthCtx.fillRect(0, 0, animatedHealthCanvas.width, animatedHealthCanvas.height);
             
-            // Draw animated health bar on canvas
             const barWidth = 1000;
             const barHeight = 100;
             const x = (animatedHealthCanvas.width - barWidth) / 2;
@@ -1016,13 +1188,11 @@
             const cornerRadius = 25;
             const fillWidth = (barWidth * healthValue) / 100;
             
-            // Draw background
             animatedHealthCtx.fillStyle = '#eeeeee';
             animatedHealthCtx.beginPath();
             animatedHealthCtx.roundRect(x, y, barWidth, barHeight, cornerRadius);
             animatedHealthCtx.fill();
             
-            // Draw fill with animation effects
             const gradient = animatedHealthCtx.createLinearGradient(x, y, x + barWidth, y);
             gradient.addColorStop(0, '#ff6b6b');
             gradient.addColorStop(0.25, '#ff8e53');
@@ -1035,7 +1205,6 @@
             animatedHealthCtx.roundRect(x, y, fillWidth, barHeight, cornerRadius);
             animatedHealthCtx.fill();
             
-            // Add overlay effect
             const overlayGradient = animatedHealthCtx.createLinearGradient(x, y, x + barWidth, y);
             overlayGradient.addColorStop(0, 'rgba(255,255,255,0.3)');
             overlayGradient.addColorStop(0.5, 'rgba(255,255,255,0.1)');
@@ -1046,24 +1215,20 @@
             animatedHealthCtx.roundRect(x, y, fillWidth, barHeight, cornerRadius);
             animatedHealthCtx.fill();
             
-            // Draw border
             animatedHealthCtx.strokeStyle = '#333333';
             animatedHealthCtx.lineWidth = 4;
             animatedHealthCtx.beginPath();
             animatedHealthCtx.roundRect(x, y, barWidth, barHeight, cornerRadius);
             animatedHealthCtx.stroke();
             
-            // Draw particles on canvas
             drawParticles(animatedHealthCtx);
             
-            // Draw health text
             animatedHealthCtx.fillStyle = healthValue > 70 ? '#ffffff' : healthValue > 30 ? '#ffd166' : '#ff6b6b';
             animatedHealthCtx.font = 'bold 36px Arial';
             animatedHealthCtx.textAlign = 'center';
             animatedHealthCtx.textBaseline = 'middle';
             animatedHealthCtx.fillText(`${Math.round(healthValue)}%`, animatedHealthCanvas.width / 2, animatedHealthCanvas.height / 2);
             
-            // Draw preset label
             animatedHealthCtx.fillStyle = '#666666';
             animatedHealthCtx.font = 'bold 20px Arial';
             animatedHealthCtx.fillText(`Preset: ${currentPreset.charAt(0).toUpperCase() + currentPreset.slice(1)}`, animatedHealthCanvas.width / 2, 50);
@@ -1085,7 +1250,6 @@
             if (animationFrame) {
                 cancelAnimationFrame(animationFrame);
             }
-            // Reset styles
             animatedHealthBar.style.transform = 'scale(1)';
             animatedHealthFill.style.width = '100%';
             animatedHealthFill.style.height = '100%';
@@ -1096,7 +1260,6 @@
         function setPreset(preset) {
             currentPreset = preset;
             
-            // Update active button
             document.querySelectorAll('.preset-btn').forEach(btn => {
                 btn.classList.remove('active');
                 if (btn.dataset.preset === preset) {
@@ -1104,7 +1267,6 @@
                 }
             });
             
-            // Reset animation styles
             stopAnimation();
             if (animationRunning) {
                 updateHealthAnimation();
@@ -1195,13 +1357,11 @@
             });
         }
 
-        // Updated TrailParticle class with better size control
         class TrailParticle {
             constructor(x, y, color, useImage = false, image = null) {
                 this.x = x;
                 this.y = y;
                 
-                // Use different size ranges based on whether it's a speed trail or normal trail
                 const config = useImage ? TRAIL_CONFIG.speed : TRAIL_CONFIG.normal;
                 this.size = Math.random() * (config.maxSize - config.minSize) + config.minSize;
                 
@@ -1231,12 +1391,10 @@
                 ctx.globalAlpha = this.life;
                 
                 if (this.useImage && this.image) {
-                    // Draw speed.png image for speed trail
                     ctx.translate(this.x, this.y);
                     ctx.rotate(this.rotation * Math.PI / 180);
                     ctx.drawImage(this.image, -this.size/2, -this.size/2, this.size, this.size);
                 } else {
-                    // Draw regular colored circle
                     ctx.fillStyle = this.color;
                     ctx.shadowBlur = 10;
                     ctx.shadowColor = this.color;
@@ -1253,18 +1411,15 @@
             const currentTime = Date.now();
             const squareType = square.isBlue ? 'blue' : 'red';
             
-            // Only create trails every TRAIL_SPAWN_RATE milliseconds for each square individually
             if (currentTime - lastTrailTimes[squareType] < TRAIL_SPAWN_RATE) {
                 return;
             }
             
             lastTrailTimes[squareType] = currentTime;
             
-            // Create trail particles slightly off-center based on movement direction
             const offsetX = (Math.random() - 0.5) * square.size * 0.6;
             const offsetY = (Math.random() - 0.5) * square.size * 0.6;
             
-            // Add slight bias in the direction of movement
             const directionBias = 0.3;
             const biasedOffsetX = offsetX + (square.vx > 0 ? directionBias : -directionBias) * square.size * 0.2;
             const biasedOffsetY = offsetY + (square.vy > 0 ? directionBias : -directionBias) * square.size * 0.2;
@@ -1272,16 +1427,12 @@
             const trailX = square.x + square.size / 2 + biasedOffsetX;
             const trailY = square.y + square.size / 2 + biasedOffsetY;
             
-            // Use the health bar colors for trails
             const trailColor = square.isBlue ? blueHealthColor : redHealthColor;
             
-            // Create multiple particles for better trail effect
             for (let i = 0; i < 2; i++) {
-                // Add some variation to particle positions
                 const particleX = trailX + (Math.random() - 0.5) * square.size * 0.3;
                 const particleY = trailY + (Math.random() - 0.5) * square.size * 0.3;
                 
-                // If square has speed effect, use speed.png images for trails
                 const useImage = square.hasSpeed;
                 const image = useImage ? speedImg : null;
                 
@@ -1309,12 +1460,10 @@
         function clearTrails() {
             trailParticles.length = 0;
             activeTrails = 0;
-            // Reset trail times when clearing
             lastTrailTimes.blue = 0;
             lastTrailTimes.red = 0;
         }
 
-        // Function to restore square to normal speed
         function restoreNormalSpeed(square) {
             const baseSpeed = square.originalSpeed;
             const dirX = Math.sign(square.vx);
@@ -1326,48 +1475,36 @@
             square.hasSpeed = false;
         }
 
-        // Function to apply slow effect
         function applySlowEffect(square) {
-            // Cancel any speed effect first
             square.hasSpeed = false;
             
-            // Apply slow effect
             square.isSlowed = true;
             square.slowExpiryTime = Date.now() + SLOW_DURATION;
             
-            // Reduce speed to 75%
             const currentSpeedMultiplier = 0.75;
             
-            // Calculate current direction to preserve it
             const speedX = Math.abs(square.vx);
             const speedY = Math.abs(square.vy);
             const dirX = Math.sign(square.vx);
             const dirY = Math.sign(square.vy);
             
-            // Apply slow effect
             square.vx = dirX * speedX * currentSpeedMultiplier;
             square.vy = dirY * speedY * currentSpeedMultiplier;
         }
 
-        // Function to apply speed effect
         function applySpeedEffect(square) {
-            // Cancel any slow effect first
             square.isSlowed = false;
             
-            // Apply speed effect
             square.hasSpeed = true;
             square.speedExpiryTime = Date.now() + SPEED_DURATION;
             
-            // Increase speed to 125%
             const currentSpeedMultiplier = 1.25;
             
-            // Calculate current direction to preserve it
             const speedX = Math.abs(square.vx);
             const speedY = Math.abs(square.vy);
             const dirX = Math.sign(square.vx);
             const dirY = Math.sign(square.vy);
             
-            // Apply speed effect
             square.vx = dirX * speedX * currentSpeedMultiplier;
             square.vy = dirY * speedY * currentSpeedMultiplier;
         }
@@ -1510,7 +1647,6 @@
         downloadVideoBtn.addEventListener('click', downloadVideo);
         
         function drawStandaloneHealthBars() {
-            // Fill background with #FCFEFE
             healthBarCtx.fillStyle = '#FCFEFE';
             healthBarCtx.fillRect(0, 0, healthBarCanvas.width, healthBarCanvas.height);
             
@@ -1866,7 +2002,6 @@
                 canvas.style.height = '100vh';
                 canvas.style.objectFit = 'contain';
                 
-                // Set dark gray background for fullscreen (outside area)
                 canvas.style.backgroundColor = '#212123';
                 
                 const scaleX = canvas.width / originalCanvasSize.width;
@@ -2177,7 +2312,6 @@
             ctx.strokeStyle = frameColor;
             ctx.lineWidth = frameThickness * (isFullscreen ? fullscreenScale : 1);
             
-            // Draw the colored frame
             ctx.strokeRect(
                 frameBounds.left, 
                 frameBounds.top, 
@@ -2247,34 +2381,59 @@
             downloadAudio();
         });
         
+        // NEW: UPDATED KEY CONTROLS WITH RECORDER
         document.addEventListener('keydown', function(event) {
-                if (event.key === ' ') { // Spacebar
-                    pauseBtn.click();
-                } else if (event.key === 'r' || event.key === 'R') {
+            switch(event.key.toLowerCase()) {
+                case 'f':
+                    // F to toggle recording
+                    event.preventDefault();
+                    screenRecorder.toggle();
+                    break;
+                    
+                case 'r':
+                    // R to reset game
+                    event.preventDefault();
                     resetBtn.click();
-                } else if (event.key === 'f' || event.key === 'F') {
-                    fullscreenBtn.click();
-                } else if (event.key === '1') {
+                    break;
+                    
+                case ' ':
+                    // Space to pause
+                    event.preventDefault();
+                    pauseBtn.click();
+                    break;
+                    
+                case '1':
                     speedMultiplier = 1;
                     speedBtn.textContent = 'Speed: 1x';
-                } else if (event.key === '2') {
+                    break;
+                    
+                case '2':
                     speedMultiplier = 2;
                     speedBtn.textContent = 'Speed: 2x';
-                } else if (event.key === '3') {
+                    break;
+                    
+                case '3':
                     speedMultiplier = 3;
                     speedBtn.textContent = 'Speed: 3x';
-                }
-                });
-
-        
-        document.addEventListener('keydown', function(event) {
-            if (event.key === 'AudioVolumeDown' || event.keyCode === 174) {
-                event.preventDefault();
-                pauseBtn.click();
-            }
-            if (event.key === 'AudioVolumeUp' || event.keyCode === 175) {
-                event.preventDefault();
-                resetBtn.click();
+                    break;
+                    
+                case 'f11':
+                case 'fullscreen':
+                    fullscreenBtn.click();
+                    break;
+                    
+                // Mobile controls
+                case 'audiovolumedown':
+                case 'volumedown':
+                    event.preventDefault();
+                    pauseBtn.click();
+                    break;
+                    
+                case 'audiovolumeup':
+                case 'volumeup':
+                    event.preventDefault();
+                    resetBtn.click();
+                    break;
             }
         });
         
@@ -2565,10 +2724,8 @@
             
             const currentTime = Date.now();
             
-            // Update trails
             updateTrails();
             
-            // Clear the canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
             if (countdownActive) {
@@ -2594,14 +2751,10 @@
                 return;
             }
             
-            // Draw background based on fullscreen state
             if (isFullscreen) {
-                // For fullscreen: dark gray outside, white inside the frame
-                // Draw dark gray background for the entire canvas
                 ctx.fillStyle = '#212123';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 
-                // Draw white rectangle for the play area inside the frame
                 ctx.fillStyle = '#ffffff';
                 ctx.fillRect(
                     frameBounds.left, 
@@ -2610,14 +2763,12 @@
                     frameBounds.bottom - frameBounds.top
                 );
             } else if (canvasBackgroundColor !== '#ffffff') {
-                // For normal mode, use the selected background color
                 ctx.fillStyle = canvasBackgroundColor;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
             }
             
             drawCollisionFrame();
             
-            // Draw trails
             drawTrails();
             
             powerUps.forEach(powerUp => {
@@ -2659,11 +2810,9 @@
                             
                             playSound('heal');
                         } else if (powerUp.type === 'slow') {
-                            // Apply slow effect (this will cancel any speed effect)
                             applySlowEffect(square);
                             playSound('slow');
                         } else if (powerUp.type === 'speed') {
-                            // Apply speed effect (this will cancel any slow effect)
                             applySpeedEffect(square);
                             playSound('speed');
                         }
@@ -2685,17 +2834,14 @@
                     continue;
                 }
                 
-                // Handle effect expirations
                 if (square.hasThorns && currentTime > square.thornExpiryTime) {
                     square.hasThorns = false;
                 }
                 
-                // Handle slow effect expiration
                 if (square.isSlowed && currentTime > square.slowExpiryTime) {
                     restoreNormalSpeed(square);
                 }
                 
-                // Handle speed effect expiration
                 if (square.hasSpeed && currentTime > square.speedExpiryTime) {
                     restoreNormalSpeed(square);
                 }
@@ -2703,7 +2849,6 @@
                 square.x += square.vx * speedMultiplier;
                 square.y += square.vy * speedMultiplier;
                 
-                // Create trail for moving square
                 if (!isPaused && !countdownActive && gameStarted && square.size > 0) {
                     createTrail(square);
                 }
@@ -2746,7 +2891,6 @@
                     if (square.y + square.size >= frameBounds.bottom) square.y = frameBounds.bottom - square.size;
                 }
                 
-                // Draw the square image
                 if (square.isBlue && blueImageReady) {
                     ctx.drawImage(blueSquareImg, square.x, square.y, square.size, square.size);
                 } else if (!square.isBlue && redImageReady) {
@@ -2756,13 +2900,11 @@
                     ctx.fillRect(square.x, square.y, square.size, square.size);
                 }
                 
-                // Add 60% grey overlay on top for slowed effect
                 if (square.isSlowed) {
-                    ctx.fillStyle = 'rgba(128, 128, 128, 0.6)'; // 60% opacity grey
+                    ctx.fillStyle = 'rgba(128, 128, 128, 0.6)';
                     ctx.fillRect(square.x, square.y, square.size, square.size);
                 }
                 
-                // Draw border
                 ctx.strokeStyle = '#333';
                 ctx.lineWidth = 2 * (isFullscreen ? fullscreenScale : 1);
                 ctx.strokeRect(square.x, square.y, square.size, square.size);
@@ -2887,7 +3029,6 @@
             slowSpawnInterval = setInterval(spawnSlowPowerUp, SLOW_SPAWN_INTERVAL);
             speedSpawnInterval = setInterval(spawnSpeedPowerUp, SPEED_SPAWN_INTERVAL);
             
-            // Start animated health bar automatically
             animationRunning = true;
             startAnimationBtn.textContent = 'Stop Animation';
             updateHealthAnimation();
@@ -2977,7 +3118,6 @@
             }
         });
         
-        // Animated Health Bar Event Listeners
         startAnimationBtn.addEventListener('click', startAnimation);
         startAnimatedRecordingBtn.addEventListener('click', startAnimatedRecording);
         stopAnimatedRecordingBtn.addEventListener('click', stopAnimatedRecording);
@@ -2995,7 +3135,6 @@
             });
         });
         
-        // Add CSS for roundRect if not supported
         if (!CanvasRenderingContext2D.prototype.roundRect) {
             CanvasRenderingContext2D.prototype.roundRect = function(x, y, width, height, radius) {
                 if (width < 2 * radius) radius = width / 2;
