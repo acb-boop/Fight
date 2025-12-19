@@ -249,187 +249,6 @@
             margin-bottom: 5px;
         }
         
-        /* Animated Health Bar Styles */
-        .animated-health-section {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-            margin-top: 30px;
-            padding: 20px;
-            background-color: #f9f9f9;
-            border-radius: 8px;
-            border: 2px solid #ddd;
-            width: 100%;
-            max-width: 1000px;
-        }
-        
-        .animated-health-controls {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-        
-        .animated-health-bar {
-            width: 100%;
-            max-width: 800px;
-            height: 60px;
-            border: 3px solid #333;
-            background: linear-gradient(90deg, #ff6b6b, #ff8e53, #ffd166, #06d6a0, #118ab2);
-            border-radius: 30px;
-            overflow: hidden;
-            position: relative;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-        }
-        
-        .animated-health-fill {
-            position: absolute;
-            top: 0;
-            left: 0;
-            height: 100%;
-            width: 100%;
-            background: linear-gradient(90deg, #ff6b6b, #ff8e53, #ffd166, #06d6a0, #118ab2);
-            border-radius: 30px;
-            transform-origin: left center;
-        }
-        
-        .animated-health-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, 
-                rgba(255,255,255,0.3) 0%, 
-                rgba(255,255,255,0.1) 50%, 
-                rgba(255,255,255,0.3) 100%);
-            animation: shimmer 3s infinite linear;
-            border-radius: 30px;
-        }
-        
-        .animated-health-particles {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-        }
-        
-        .particle {
-            position: absolute;
-            width: 8px;
-            height: 8px;
-            background: white;
-            border-radius: 50%;
-            opacity: 0;
-            filter: blur(1px);
-        }
-        
-        .animated-health-text {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 24px;
-            font-weight: bold;
-            color: white;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-            font-family: 'Arial', sans-serif;
-            z-index: 10;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.02); }
-        }
-        
-        @keyframes breath {
-            0%, 100% { width: 100%; }
-            50% { width: 95%; }
-        }
-        
-        @keyframes shimmer {
-            0% { background-position: -1000px 0; }
-            100% { background-position: 1000px 0; }
-        }
-        
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-20px); }
-        }
-        
-        .animation-preview {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 20px;
-            width: 100%;
-        }
-        
-        .animation-controls-panel {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            justify-content: center;
-            background: #f0f0f0;
-            padding: 15px;
-            border-radius: 10px;
-            border: 1px solid #ccc;
-            width: 100%;
-        }
-        
-        .animation-speed-control {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .animation-presets {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            justify-content: center;
-            margin-top: 10px;
-        }
-        
-        .preset-btn {
-            padding: 8px 16px;
-            background-color: #9b59b6;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.3s;
-        }
-        
-        .preset-btn:hover {
-            background-color: #8e44ad;
-            transform: translateY(-2px);
-        }
-        
-        .preset-btn.active {
-            background-color: #3498db;
-            box-shadow: 0 2px 8px rgba(52, 152, 219, 0.4);
-        }
-        
-        .download-animation-btn {
-            background-color: #27ae60;
-        }
-        
-        .download-animation-btn:hover {
-            background-color: #219955;
-        }
-        
-        #animatedHealthCanvas {
-            border: 2px solid #666;
-            margin-top: 20px;
-            background-color: #FCFEFE;
-        }
-        
         /* NEW: Recorder Status Styles */
         .recorder-status {
             position: absolute;
@@ -451,6 +270,82 @@
         .recording-time {
             margin-left: 5px;
             font-family: monospace;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        
+        /* NEW: Recording Controls Panel */
+        .recording-controls-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+            width: 100%;
+            max-width: 800px;
+        }
+        
+        .recording-controls-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .recording-controls-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .recording-status-display {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            margin-top: 10px;
+            width: 100%;
+        }
+        
+        .recording-status-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 10px;
+            background-color: #fff;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        
+        .status-indicator {
+            font-weight: bold;
+        }
+        
+        .status-recording {
+            color: #e74c3c;
+        }
+        
+        .status-ready {
+            color: #27ae60;
+        }
+        
+        .status-stopped {
+            color: #666;
+        }
+        
+        .download-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
         }
     </style>
 </head>
@@ -486,12 +381,38 @@
         </div>
         
         <div class="game-info">
-            <strong>Controls:</strong> F=Record, R=Reset, Space=Pause, 1/2/3=Speed, Fullscreen=Button
+            <strong>Controls:</strong> O=Start/Stop All Recordings, R=Reset, Space=Pause, 1/2/3=Speed, Fullscreen=Button
         </div>
         
-        <div class="audio-controls">
-            <button id="startAudioBtn">Start Audio Tracking</button>
-            <button id="downloadAudioBtn" class="download-btn" disabled>Download Audio</button>
+        <!-- NEW: Recording Controls Panel -->
+        <div class="recording-controls-panel">
+            <div class="recording-controls-title">Recording Controls (Press O to toggle all)</div>
+            
+            <div class="recording-controls-buttons">
+                <button id="toggleRecordBtn" class="recording-btn">Start All Recordings (O)</button>
+            </div>
+            
+            <div class="recording-status-display">
+                <div class="recording-status-item">
+                    <span>Game Recording:</span>
+                    <span id="gameRecordingStatus" class="status-indicator status-stopped">Stopped</span>
+                </div>
+                <div class="recording-status-item">
+                    <span>Audio Tracking:</span>
+                    <span id="audioRecordingStatus" class="status-indicator status-stopped">Stopped</span>
+                </div>
+                <div class="recording-status-item">
+                    <span>Health Bars Recording:</span>
+                    <span id="healthBarsRecordingStatus" class="status-indicator status-stopped">Stopped</span>
+                </div>
+            </div>
+            
+            <div class="download-controls">
+                <button id="downloadGameVideoBtn" class="download-btn" disabled>Download Game Video</button>
+                <button id="downloadAudioBtn" class="download-btn" disabled>Download Audio</button>
+                <button id="downloadHealthBarsVideoBtn" class="download-btn" disabled>Download Health Bars Video</button>
+                <button id="downloadHealthBarsImageBtn" class="download-btn">Download Health Bars Image</button>
+            </div>
         </div>
         
         <div class="background-color-control">
@@ -602,65 +523,17 @@
                     </div>
                 </div>
             </div>
-            
-            <div class="video-controls">
-                <button id="startVideoBtn" class="recording-btn">Start Recording</button>
-                <button id="stopVideoBtn" class="recording-btn" disabled>Stop Recording</button>
-                <button id="downloadVideoBtn" class="download-btn" disabled>Download Video</button>
-                <button id="downloadHealthBarsBtn" class="download-btn">Download Image (PNG)</button>
-            </div>
-            <div id="recordingStatus"></div>
-        </div>
-        
-        <!-- Animated Health Bar Section -->
-        <div class="animated-health-section">
-            <h3>Animated Health Bar (Recordable)</h3>
-            
-            <div class="animation-preview">
-                <div class="animated-health-bar" id="animatedHealthBar">
-                    <div class="animated-health-fill" id="animatedHealthFill"></div>
-                    <div class="animated-health-overlay" id="animatedHealthOverlay"></div>
-                    <div class="animated-health-particles" id="animatedHealthParticles"></div>
-                    <div class="animated-health-text" id="animatedHealthText">100%</div>
-                </div>
-                
-                <div class="animation-controls-panel">
-                    <div class="animation-speed-control">
-                        <label for="animationSpeed">Animation Speed:</label>
-                        <input type="range" id="animationSpeed" min="0.5" max="3" step="0.1" value="1">
-                        <span id="speedValue">1x</span>
-                    </div>
-                    
-                    <div class="animation-presets">
-                        <button class="preset-btn active" data-preset="pulse">Pulse</button>
-                        <button class="preset-btn" data-preset="breath">Breathing</button>
-                        <button class="preset-btn" data-preset="wave">Wave</button>
-                        <button class="preset-btn" data-preset="rainbow">Rainbow</button>
-                        <button class="preset-btn" data-preset="particles">Particles</button>
-                    </div>
-                </div>
-                
-                <canvas id="animatedHealthCanvas" width="1200" height="400"></canvas>
-                
-                <div class="animated-health-controls">
-                    <button id="startAnimationBtn" class="recording-btn">Start Animation</button>
-                    <button id="startAnimatedRecordingBtn" class="recording-btn">Start Recording</button>
-                    <button id="stopAnimatedRecordingBtn" class="recording-btn" disabled>Stop Recording</button>
-                    <button id="downloadAnimatedVideoBtn" class="download-btn" disabled>Download Video</button>
-                    <button id="downloadAnimatedImageBtn" class="download-animation-btn">Download Image (PNG)</button>
-                </div>
-                <div id="animatedRecordingStatus"></div>
-            </div>
         </div>
     </div>
 
     <script>
         // ====================
-        // NEW: SCREEN RECORDER CLASS
+        // SCREEN RECORDER CLASS
         // ====================
         class CanvasRecorder {
-            constructor(canvasElement) {
+            constructor(canvasElement, recorderType = 'game') {
                 this.canvas = canvasElement;
+                this.recorderType = recorderType;
                 this.mediaRecorder = null;
                 this.recordedChunks = [];
                 this.isRecording = false;
@@ -669,8 +542,10 @@
                 this.frameRate = 60;
                 this.videoBitsPerSecond = 8000000;
                 
-                this.statusElement = document.getElementById('recorderStatus');
-                this.timeElement = document.getElementById('recordingTime');
+                if (recorderType === 'game') {
+                    this.statusElement = document.getElementById('recorderStatus');
+                    this.timeElement = document.getElementById('recordingTime');
+                }
             }
             
             async start() {
@@ -714,14 +589,14 @@
                     };
                     
                     this.mediaRecorder.onstop = () => {
-                        this.download();
                         this.stopTimer();
-                        this.hideStatus();
+                        if (this.recorderType === 'game') {
+                            this.hideStatus();
+                        }
                     };
                     
                     this.mediaRecorder.onerror = (event) => {
                         console.error('MediaRecorder error:', event.error);
-                        alert('Recording error: ' + event.error);
                         this.stop();
                     };
                     
@@ -729,14 +604,16 @@
                     this.isRecording = true;
                     this.startTime = Date.now();
                     
-                    this.showStatus();
+                    if (this.recorderType === 'game') {
+                        this.showStatus();
+                    }
+                    
                     this.startTimer();
                     
-                    console.log('Recording started with codec:', mimeType);
+                    console.log(`${this.recorderType} recording started`);
                     
                 } catch (error) {
-                    console.error('Failed to start recording:', error);
-                    alert('Failed to start recording. Your browser may not support this feature.');
+                    console.error(`Failed to start ${this.recorderType} recording:`, error);
                 }
             }
             
@@ -745,14 +622,16 @@
                     this.mediaRecorder.stop();
                     this.isRecording = false;
                     this.stopTimer();
-                    this.hideStatus();
+                    if (this.recorderType === 'game') {
+                        this.hideStatus();
+                    }
                 }
             }
             
-            download() {
+            download(filename = null) {
                 if (this.recordedChunks.length === 0) {
-                    console.warn('No video recorded');
-                    return;
+                    console.warn(`No ${this.recorderType} video recorded`);
+                    return false;
                 }
                 
                 const mimeType = this.recordedChunks[0].type || 'video/webm';
@@ -762,7 +641,8 @@
                 const a = document.createElement('a');
                 
                 const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-                a.download = `bouncing-squares-${timestamp}.${extension}`;
+                const defaultFilename = filename || `${this.recorderType}-recording-${timestamp}.${extension}`;
+                a.download = defaultFilename;
                 a.href = url;
                 a.style.display = 'none';
                 
@@ -774,24 +654,33 @@
                     URL.revokeObjectURL(url);
                 }, 100);
                 
-                console.log(`Video downloaded: ${a.download}`);
+                console.log(`${this.recorderType} video downloaded: ${a.download}`);
+                return true;
             }
             
             showStatus() {
-                this.statusElement.style.display = 'block';
+                if (this.statusElement) {
+                    this.statusElement.style.display = 'block';
+                }
             }
             
             hideStatus() {
-                this.statusElement.style.display = 'none';
+                if (this.statusElement) {
+                    this.statusElement.style.display = 'none';
+                }
             }
             
             startTimer() {
+                if (this.recorderType !== 'game') return;
+                
                 this.timerInterval = setInterval(() => {
                     const elapsed = Date.now() - this.startTime;
                     const minutes = Math.floor(elapsed / 60000);
                     const seconds = Math.floor((elapsed % 60000) / 1000);
-                    this.timeElement.textContent = 
-                        `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                    if (this.timeElement) {
+                        this.timeElement.textContent = 
+                            `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                    }
                 }, 250);
             }
             
@@ -809,6 +698,10 @@
                     this.start();
                 }
             }
+            
+            clearRecording() {
+                this.recordedChunks = [];
+            }
         }
         
         // ====================
@@ -820,16 +713,9 @@
         const healthBarCanvas = document.getElementById('healthBarCanvas');
         const healthBarCtx = healthBarCanvas.getContext('2d');
         
-        const animatedHealthCanvas = document.getElementById('animatedHealthCanvas');
-        const animatedHealthCtx = animatedHealthCanvas.getContext('2d');
-        const animatedHealthBar = document.getElementById('animatedHealthBar');
-        const animatedHealthFill = document.getElementById('animatedHealthFill');
-        const animatedHealthOverlay = document.getElementById('animatedHealthOverlay');
-        const animatedHealthParticles = document.getElementById('animatedHealthParticles');
-        const animatedHealthText = document.getElementById('animatedHealthText');
-        
-        // Initialize the recorder
-        const screenRecorder = new CanvasRecorder(canvas);
+        // Initialize recorders
+        const gameRecorder = new CanvasRecorder(canvas, 'game');
+        const healthBarsRecorder = new CanvasRecorder(healthBarCanvas, 'health-bars');
 
         const TRAIL_LIFETIME = 700;
         const TRAIL_SPAWN_RATE = 50;
@@ -852,13 +738,11 @@
         const speedBtn = document.getElementById('speedBtn');
         const fullscreenBtn = document.getElementById('fullscreenBtn');
         const clearTrailsBtn = document.getElementById('clearTrailsBtn');
-        const startAudioBtn = document.getElementById('startAudioBtn');
+        const toggleRecordBtn = document.getElementById('toggleRecordBtn');
+        const downloadGameVideoBtn = document.getElementById('downloadGameVideoBtn');
         const downloadAudioBtn = document.getElementById('downloadAudioBtn');
-        const downloadHealthBarsBtn = document.getElementById('downloadHealthBarsBtn');
-        const startVideoBtn = document.getElementById('startVideoBtn');
-        const stopVideoBtn = document.getElementById('stopVideoBtn');
-        const downloadVideoBtn = document.getElementById('downloadVideoBtn');
-        const recordingStatus = document.getElementById('recordingStatus');
+        const downloadHealthBarsVideoBtn = document.getElementById('downloadHealthBarsVideoBtn');
+        const downloadHealthBarsImageBtn = document.getElementById('downloadHealthBarsImageBtn');
         const redThornColorInput = document.getElementById('redThornColor');
         const blueThornColorInput = document.getElementById('blueThornColor');
         const redHealthColorInput = document.getElementById('redHealthColor');
@@ -887,39 +771,6 @@
         const standaloneEmptyColor = document.getElementById('standaloneEmptyColor');
         const standaloneEmptyPicker = document.getElementById('standaloneEmptyPicker');
         
-        const startAnimationBtn = document.getElementById('startAnimationBtn');
-        const startAnimatedRecordingBtn = document.getElementById('startAnimatedRecordingBtn');
-        const stopAnimatedRecordingBtn = document.getElementById('stopAnimatedRecordingBtn');
-        const downloadAnimatedVideoBtn = document.getElementById('downloadAnimatedVideoBtn');
-        const downloadAnimatedImageBtn = document.getElementById('downloadAnimatedImageBtn');
-        const animatedRecordingStatus = document.getElementById('animatedRecordingStatus');
-        const animationSpeed = document.getElementById('animationSpeed');
-        const speedValue = document.getElementById('speedValue');
-        
-        let standaloneColors = {
-            blueSegments: ['#3498db', '#3498db', '#3498db', '#3498db'],
-            redSegments: ['#e74c3c', '#e74c3c', '#e74c3c', '#e74c3c'],
-            border: '#333333',
-            empty: '#dddddd'
-        };
-        
-        let mediaRecorder = null;
-        let recordedChunks = [];
-        let isRecording = false;
-        
-        let animatedMediaRecorder = null;
-        let animatedRecordedChunks = [];
-        let isAnimatedRecording = false;
-        let animationFrame = null;
-        let animationRunning = false;
-        let currentPreset = 'pulse';
-        let animationSpeedValue = 1;
-        
-        let healthValue = 100;
-        let healthDirection = -1;
-        let time = 0;
-        let particles = [];
-        
         const backgroundColorText = document.getElementById('backgroundColorText');
         const backgroundColorPicker = document.getElementById('backgroundColorPicker');
         const applyBackgroundBtn = document.getElementById('applyBackgroundBtn');
@@ -930,11 +781,19 @@
         const applyFrameBtn = document.getElementById('applyFrameBtn');
         const resetFrameBtn = document.getElementById('resetFrameBtn');
         
+        let standaloneColors = {
+            blueSegments: ['#3498db', '#3498db', '#3498db', '#3498db'],
+            redSegments: ['#e74c3c', '#e74c3c', '#e74c3c', '#e74c3c'],
+            border: '#333333',
+            empty: '#dddddd'
+        };
+        
         let audioContext = null;
         let audioBuffers = {};
         let audioEvents = [];
         let simulationStartTime = 0;
-        let isTrackingAudio = false;
+        let isAudioRecording = false;
+        let allRecording = false;
         
         let countdown = 5;
         let countdownActive = false;
@@ -1031,331 +890,6 @@
             blue: 0,
             red: 0
         };
-
-        class AnimatedParticle {
-            constructor(x, y, color) {
-                this.x = x;
-                this.y = y;
-                this.size = Math.random() * 6 + 2;
-                this.speedX = (Math.random() - 0.5) * 2;
-                this.speedY = (Math.random() - 0.5) * 2;
-                this.color = color;
-                this.life = 1;
-                this.decay = Math.random() * 0.01 + 0.005;
-                this.originalSize = this.size;
-            }
-            
-            update() {
-                this.x += this.speedX * animationSpeedValue;
-                this.y += this.speedY * animationSpeedValue;
-                this.life -= this.decay * animationSpeedValue;
-                this.size = this.originalSize * this.life;
-                return this.life > 0;
-            }
-            
-            draw(ctx) {
-                ctx.save();
-                ctx.globalAlpha = this.life;
-                ctx.fillStyle = this.color;
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.restore();
-            }
-        }
-        
-        function createParticles(count, x, y, width, height) {
-            const colors = ['#ff6b6b', '#ff8e53', '#ffd166', '#06d6a0', '#118ab2', '#7209b7'];
-            for (let i = 0; i < count; i++) {
-                const color = colors[Math.floor(Math.random() * colors.length)];
-                const particleX = x + Math.random() * width;
-                const particleY = y + Math.random() * height;
-                particles.push(new AnimatedParticle(particleX, particleY, color));
-            }
-        }
-        
-        function updateParticles() {
-            particles = particles.filter(particle => particle.update());
-        }
-        
-        function drawParticles(ctx) {
-            particles.forEach(particle => particle.draw(ctx));
-        }
-        
-        function updateHealthAnimation() {
-            if (!animationRunning) return;
-            
-            time += 0.02 * animationSpeedValue;
-            
-            healthValue += healthDirection * 0.5 * animationSpeedValue;
-            if (healthValue <= 20) healthDirection = 1;
-            if (healthValue >= 100) healthDirection = -1;
-            
-            switch(currentPreset) {
-                case 'pulse':
-                    applyPulseAnimation();
-                    break;
-                case 'breath':
-                    applyBreathAnimation();
-                    break;
-                case 'wave':
-                    applyWaveAnimation();
-                    break;
-                case 'rainbow':
-                    applyRainbowAnimation();
-                    break;
-                case 'particles':
-                    applyParticlesAnimation();
-                    break;
-            }
-            
-            updateParticles();
-            drawAnimatedHealthBar();
-            updateAnimatedCanvas();
-            
-            animationFrame = requestAnimationFrame(updateHealthAnimation);
-        }
-        
-        function applyPulseAnimation() {
-            const pulseScale = 1 + 0.02 * Math.sin(time * 2);
-            animatedHealthBar.style.transform = `scale(${pulseScale})`;
-            animatedHealthBar.style.transition = 'transform 0.3s ease';
-            
-            const glowIntensity = 0.5 + 0.5 * Math.sin(time);
-            animatedHealthBar.style.boxShadow = `0 0 ${20 * glowIntensity}px rgba(255, 107, 107, ${0.5 * glowIntensity})`;
-        }
-        
-        function applyBreathAnimation() {
-            const breathWidth = 95 + 5 * Math.sin(time);
-            animatedHealthFill.style.width = `${breathWidth}%`;
-            animatedHealthFill.style.transition = 'width 2s ease-in-out';
-        }
-        
-        function applyWaveAnimation() {
-            const waveHeight = 5 * Math.sin(time * 3);
-            animatedHealthFill.style.height = `calc(100% + ${waveHeight}px)`;
-            animatedHealthFill.style.transition = 'height 0.5s ease';
-            
-            const gradientAngle = (time * 10) % 360;
-            animatedHealthFill.style.background = `linear-gradient(${gradientAngle}deg, #ff6b6b, #ff8e53, #ffd166, #06d6a0, #118ab2)`;
-        }
-        
-        function applyRainbowAnimation() {
-            const gradientPosition = (time * 20) % 100;
-            animatedHealthFill.style.background = `linear-gradient(90deg, 
-                #ff6b6b ${gradientPosition}%, 
-                #ff8e53 ${(gradientPosition + 20) % 100}%, 
-                #ffd166 ${(gradientPosition + 40) % 100}%, 
-                #06d6a0 ${(gradientPosition + 60) % 100}%, 
-                #118ab2 ${(gradientPosition + 80) % 100}%)`;
-            
-            const floatY = 5 * Math.sin(time * 2);
-            animatedHealthBar.style.transform = `translateY(${floatY}px)`;
-        }
-        
-        function applyParticlesAnimation() {
-            if (Math.random() < 0.3) {
-                const barRect = animatedHealthBar.getBoundingClientRect();
-                createParticles(3, barRect.left, barRect.top, barRect.width, barRect.height);
-            }
-            
-            animatedHealthParticles.style.opacity = 0.7 + 0.3 * Math.sin(time);
-        }
-        
-        function drawAnimatedHealthBar() {
-            animatedHealthText.textContent = `${Math.round(healthValue)}%`;
-            animatedHealthFill.style.width = `${healthValue}%`;
-            
-            if (healthValue > 70) {
-                animatedHealthText.style.color = '#ffffff';
-            } else if (healthValue > 30) {
-                animatedHealthText.style.color = '#ffd166';
-            } else {
-                animatedHealthText.style.color = '#ff6b6b';
-            }
-        }
-        
-        function updateAnimatedCanvas() {
-            if (!animatedHealthCanvas) return;
-            
-            animatedHealthCtx.fillStyle = '#FCFEFE';
-            animatedHealthCtx.fillRect(0, 0, animatedHealthCanvas.width, animatedHealthCanvas.height);
-            
-            const barWidth = 1000;
-            const barHeight = 100;
-            const x = (animatedHealthCanvas.width - barWidth) / 2;
-            const y = (animatedHealthCanvas.height - barHeight) / 2;
-            const cornerRadius = 25;
-            const fillWidth = (barWidth * healthValue) / 100;
-            
-            animatedHealthCtx.fillStyle = '#eeeeee';
-            animatedHealthCtx.beginPath();
-            animatedHealthCtx.roundRect(x, y, barWidth, barHeight, cornerRadius);
-            animatedHealthCtx.fill();
-            
-            const gradient = animatedHealthCtx.createLinearGradient(x, y, x + barWidth, y);
-            gradient.addColorStop(0, '#ff6b6b');
-            gradient.addColorStop(0.25, '#ff8e53');
-            gradient.addColorStop(0.5, '#ffd166');
-            gradient.addColorStop(0.75, '#06d6a0');
-            gradient.addColorStop(1, '#118ab2');
-            
-            animatedHealthCtx.fillStyle = gradient;
-            animatedHealthCtx.beginPath();
-            animatedHealthCtx.roundRect(x, y, fillWidth, barHeight, cornerRadius);
-            animatedHealthCtx.fill();
-            
-            const overlayGradient = animatedHealthCtx.createLinearGradient(x, y, x + barWidth, y);
-            overlayGradient.addColorStop(0, 'rgba(255,255,255,0.3)');
-            overlayGradient.addColorStop(0.5, 'rgba(255,255,255,0.1)');
-            overlayGradient.addColorStop(1, 'rgba(255,255,255,0.3)');
-            
-            animatedHealthCtx.fillStyle = overlayGradient;
-            animatedHealthCtx.beginPath();
-            animatedHealthCtx.roundRect(x, y, fillWidth, barHeight, cornerRadius);
-            animatedHealthCtx.fill();
-            
-            animatedHealthCtx.strokeStyle = '#333333';
-            animatedHealthCtx.lineWidth = 4;
-            animatedHealthCtx.beginPath();
-            animatedHealthCtx.roundRect(x, y, barWidth, barHeight, cornerRadius);
-            animatedHealthCtx.stroke();
-            
-            drawParticles(animatedHealthCtx);
-            
-            animatedHealthCtx.fillStyle = healthValue > 70 ? '#ffffff' : healthValue > 30 ? '#ffd166' : '#ff6b6b';
-            animatedHealthCtx.font = 'bold 36px Arial';
-            animatedHealthCtx.textAlign = 'center';
-            animatedHealthCtx.textBaseline = 'middle';
-            animatedHealthCtx.fillText(`${Math.round(healthValue)}%`, animatedHealthCanvas.width / 2, animatedHealthCanvas.height / 2);
-            
-            animatedHealthCtx.fillStyle = '#666666';
-            animatedHealthCtx.font = 'bold 20px Arial';
-            animatedHealthCtx.fillText(`Preset: ${currentPreset.charAt(0).toUpperCase() + currentPreset.slice(1)}`, animatedHealthCanvas.width / 2, 50);
-        }
-        
-        function startAnimation() {
-            if (animationRunning) {
-                stopAnimation();
-                startAnimationBtn.textContent = 'Start Animation';
-            } else {
-                animationRunning = true;
-                startAnimationBtn.textContent = 'Stop Animation';
-                updateHealthAnimation();
-            }
-        }
-        
-        function stopAnimation() {
-            animationRunning = false;
-            if (animationFrame) {
-                cancelAnimationFrame(animationFrame);
-            }
-            animatedHealthBar.style.transform = 'scale(1)';
-            animatedHealthFill.style.width = '100%';
-            animatedHealthFill.style.height = '100%';
-            animatedHealthFill.style.background = 'linear-gradient(90deg, #ff6b6b, #ff8e53, #ffd166, #06d6a0, #118ab2)';
-            animatedHealthBar.style.boxShadow = '0 4px 15px rgba(0,0,0,0.2)';
-        }
-        
-        function setPreset(preset) {
-            currentPreset = preset;
-            
-            document.querySelectorAll('.preset-btn').forEach(btn => {
-                btn.classList.remove('active');
-                if (btn.dataset.preset === preset) {
-                    btn.classList.add('active');
-                }
-            });
-            
-            stopAnimation();
-            if (animationRunning) {
-                updateHealthAnimation();
-            }
-        }
-        
-        function startAnimatedRecording() {
-            try {
-                animatedRecordedChunks = [];
-                const stream = animatedHealthCanvas.captureStream(60);
-                
-                animatedMediaRecorder = new MediaRecorder(stream, {
-                    mimeType: 'video/webm;codecs=vp9',
-                    videoBitsPerSecond: 8000000
-                });
-                
-                animatedMediaRecorder.ondataavailable = function(event) {
-                    if (event.data.size > 0) {
-                        animatedRecordedChunks.push(event.data);
-                    }
-                };
-                
-                animatedMediaRecorder.onstop = function() {
-                    downloadAnimatedVideoBtn.disabled = false;
-                    animatedRecordingStatus.innerHTML = '<span class="recording-indicator">Recording stopped. Click "Download Video" to save.</span>';
-                };
-                
-                animatedMediaRecorder.start();
-                isAnimatedRecording = true;
-                
-                startAnimatedRecordingBtn.disabled = true;
-                stopAnimatedRecordingBtn.disabled = false;
-                downloadAnimatedVideoBtn.disabled = true;
-                
-                animatedRecordingStatus.innerHTML = '<span class="recording-indicator">🔴 Recording Animation...</span>';
-                
-                console.log('Animated health bar recording started');
-            } catch (error) {
-                console.error('Failed to start animated recording:', error);
-                alert('Failed to start recording. Your browser may not support this feature.');
-            }
-        }
-        
-        function stopAnimatedRecording() {
-            if (animatedMediaRecorder && isAnimatedRecording) {
-                animatedMediaRecorder.stop();
-                isAnimatedRecording = false;
-                
-                startAnimatedRecordingBtn.disabled = false;
-                stopAnimatedRecordingBtn.disabled = true;
-                
-                console.log('Animated health bar recording stopped');
-            }
-        }
-        
-        function downloadAnimatedVideo() {
-            if (animatedRecordedChunks.length === 0) {
-                alert('No animation recorded. Start and stop recording first.');
-                return;
-            }
-            
-            const blob = new Blob(animatedRecordedChunks, { type: 'video/webm' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'animated-health-bar.webm';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            
-            animatedRecordingStatus.innerHTML = '';
-            downloadAnimatedVideoBtn.disabled = true;
-            
-            console.log('Animated video downloaded');
-        }
-        
-        function downloadAnimatedImage() {
-            animatedHealthCanvas.toBlob(function(blob) {
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'animated-health-bar.png';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-            });
-        }
 
         class TrailParticle {
             constructor(x, y, color, useImage = false, image = null) {
@@ -1571,83 +1105,9 @@
             drawStandaloneHealthBars();
         });
         
-        function startVideoRecording() {
-            try {
-                recordedChunks = [];
-                const stream = healthBarCanvas.captureStream(60);
-                
-                mediaRecorder = new MediaRecorder(stream, {
-                    mimeType: 'video/webm;codecs=vp9',
-                    videoBitsPerSecond: 8000000
-                });
-                
-                mediaRecorder.ondataavailable = function(event) {
-                    if (event.data.size > 0) {
-                        recordedChunks.push(event.data);
-                    }
-                };
-                
-                mediaRecorder.onstop = function() {
-                    downloadVideoBtn.disabled = false;
-                    recordingStatus.innerHTML = '<span class="recording-indicator">Recording stopped. Click "Download Video" to save.</span>';
-                };
-                
-                mediaRecorder.start();
-                isRecording = true;
-                
-                startVideoBtn.disabled = true;
-                stopVideoBtn.disabled = false;
-                downloadVideoBtn.disabled = true;
-                
-                recordingStatus.innerHTML = '<span class="recording-indicator">🔴 Recording...</span>';
-                
-                console.log('Video recording started');
-            } catch (error) {
-                console.error('Failed to start video recording:', error);
-                alert('Failed to start video recording. Your browser may not support this feature.');
-            }
-        }
-        
-        function stopVideoRecording() {
-            if (mediaRecorder && isRecording) {
-                mediaRecorder.stop();
-                isRecording = false;
-                
-                startVideoBtn.disabled = false;
-                stopVideoBtn.disabled = true;
-                
-                console.log('Video recording stopped');
-            }
-        }
-        
-        function downloadVideo() {
-            if (recordedChunks.length === 0) {
-                alert('No video recorded. Start and stop recording first.');
-                return;
-            }
-            
-            const blob = new Blob(recordedChunks, { type: 'video/webm' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'health-bars-recording.webm';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            
-            recordingStatus.innerHTML = '';
-            downloadVideoBtn.disabled = true;
-            
-            console.log('Video downloaded');
-        }
-        
-        startVideoBtn.addEventListener('click', startVideoRecording);
-        stopVideoBtn.addEventListener('click', stopVideoRecording);
-        downloadVideoBtn.addEventListener('click', downloadVideo);
-        
         function drawStandaloneHealthBars() {
-            healthBarCtx.fillStyle = '#FCFEFE';
+            // Fill background with #212123 (same as fullscreen outside area)
+            healthBarCtx.fillStyle = '#212123';
             healthBarCtx.fillRect(0, 0, healthBarCanvas.width, healthBarCanvas.height);
             
             const barWidth = 800;
@@ -1799,7 +1259,7 @@
             healthBarCtx.fillText('Red Square', redX + barWidth / 2, yPosition - 20);
         }
         
-        function downloadHealthBars() {
+        function downloadHealthBarsImage() {
             healthBarCanvas.toBlob(function(blob) {
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
@@ -1811,8 +1271,6 @@
                 URL.revokeObjectURL(url);
             });
         }
-        
-        downloadHealthBarsBtn.addEventListener('click', downloadHealthBars);
         
         async function initializeAudio() {
             try {
@@ -1835,7 +1293,7 @@
                 
                 simulationStartTime = Date.now();
                 audioEvents = [];
-                isTrackingAudio = true;
+                isAudioRecording = true;
                 return true;
             } catch (error) {
                 console.error('Audio initialization failed:', error);
@@ -1844,7 +1302,7 @@
         }
         
         function playSound(soundName) {
-            if (!isTrackingAudio || !audioBuffers[soundName]) return;
+            if (!isAudioRecording || !audioBuffers[soundName]) return;
             
             const timestamp = Date.now() - simulationStartTime;
             audioEvents.push({
@@ -1900,7 +1358,7 @@
         
         async function downloadAudio() {
             if (audioEvents.length === 0) {
-                alert('No audio events recorded. Start audio tracking and play the game first.');
+                alert('No audio events recorded. Start audio tracking first.');
                 return;
             }
             
@@ -1928,8 +1386,9 @@
             const wavBlob = audioBufferToWav(finalBuffer);
             const url = URL.createObjectURL(wavBlob);
             const a = document.createElement('a');
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
             a.href = url;
-            a.download = 'game-audio.wav';
+            a.download = `game-audio-${timestamp}.wav`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -2365,29 +1824,100 @@
         
         resetFrameBtn.addEventListener('click', resetFrame);
         
-        startAudioBtn.addEventListener('click', async function() {
-            const success = await initializeAudio();
-            if (success) {
-                console.log('Audio tracking started');
-                startAudioBtn.disabled = true;
-                downloadAudioBtn.disabled = false;
-                startAudioBtn.textContent = 'Tracking...';
+        // NEW: RECORDING CONTROL FUNCTIONS
+        function updateRecordingStatus() {
+            const gameStatusElement = document.getElementById('gameRecordingStatus');
+            const audioStatusElement = document.getElementById('audioRecordingStatus');
+            const healthBarsStatusElement = document.getElementById('healthBarsRecordingStatus');
+            
+            if (gameRecorder.isRecording) {
+                gameStatusElement.textContent = 'Recording';
+                gameStatusElement.className = 'status-indicator status-recording';
+            } else if (gameRecorder.recordedChunks.length > 0) {
+                gameStatusElement.textContent = 'Ready to Download';
+                gameStatusElement.className = 'status-indicator status-ready';
             } else {
-                alert('Failed to initialize audio tracking');
+                gameStatusElement.textContent = 'Stopped';
+                gameStatusElement.className = 'status-indicator status-stopped';
             }
-        });
-
-        downloadAudioBtn.addEventListener('click', function() {
-            downloadAudio();
-        });
+            
+            if (isAudioRecording) {
+                audioStatusElement.textContent = 'Recording';
+                audioStatusElement.className = 'status-indicator status-recording';
+            } else if (audioEvents.length > 0) {
+                audioStatusElement.textContent = 'Ready to Download';
+                audioStatusElement.className = 'status-indicator status-ready';
+            } else {
+                audioStatusElement.textContent = 'Stopped';
+                audioStatusElement.className = 'status-indicator status-stopped';
+            }
+            
+            if (healthBarsRecorder.isRecording) {
+                healthBarsStatusElement.textContent = 'Recording';
+                healthBarsStatusElement.className = 'status-indicator status-recording';
+            } else if (healthBarsRecorder.recordedChunks.length > 0) {
+                healthBarsStatusElement.textContent = 'Ready to Download';
+                healthBarsStatusElement.className = 'status-indicator status-ready';
+            } else {
+                healthBarsStatusElement.textContent = 'Stopped';
+                healthBarsStatusElement.className = 'status-indicator status-stopped';
+            }
+            
+            // Update download button states
+            downloadGameVideoBtn.disabled = gameRecorder.recordedChunks.length === 0;
+            downloadAudioBtn.disabled = audioEvents.length === 0;
+            downloadHealthBarsVideoBtn.disabled = healthBarsRecorder.recordedChunks.length === 0;
+        }
         
-        // NEW: UPDATED KEY CONTROLS WITH RECORDER
+        async function toggleAllRecordings() {
+            if (!allRecording) {
+                // Start all recordings
+                await initializeAudio(); // Initialize audio first
+                if (isAudioRecording) {
+                    console.log('Audio recording started');
+                }
+                
+                gameRecorder.start();
+                healthBarsRecorder.start();
+                
+                allRecording = true;
+                toggleRecordBtn.textContent = 'Stop All Recordings (O)';
+                toggleRecordBtn.style.backgroundColor = '#c0392b';
+            } else {
+                // Stop all recordings
+                gameRecorder.stop();
+                healthBarsRecorder.stop();
+                isAudioRecording = false;
+                
+                allRecording = false;
+                toggleRecordBtn.textContent = 'Start All Recordings (O)';
+                toggleRecordBtn.style.backgroundColor = '#e74c3c';
+            }
+            
+            updateRecordingStatus();
+        }
+        
+        function downloadGameVideo() {
+            if (gameRecorder.download()) {
+                gameRecorder.clearRecording();
+                updateRecordingStatus();
+            }
+        }
+        
+        function downloadHealthBarsVideo() {
+            if (healthBarsRecorder.download()) {
+                healthBarsRecorder.clearRecording();
+                updateRecordingStatus();
+            }
+        }
+        
+        // NEW: UPDATED KEY CONTROLS WITH O FOR RECORDING
         document.addEventListener('keydown', function(event) {
             switch(event.key.toLowerCase()) {
-                case 'f':
-                    // F to toggle recording
+                case 'o':
+                    // O to toggle all recordings
                     event.preventDefault();
-                    screenRecorder.toggle();
+                    toggleAllRecordings();
                     break;
                     
                 case 'r':
@@ -3023,15 +2553,11 @@
             animate();
             startCountdown();
             drawStandaloneHealthBars();
-            updateAnimatedCanvas();
+            updateRecordingStatus();
             knifeSpawnInterval = setInterval(spawnKnifePowerUp, KNIFE_SPAWN_INTERVAL);
             healSpawnInterval = setInterval(spawnHealPowerUp, HEAL_SPAWN_INTERVAL);
             slowSpawnInterval = setInterval(spawnSlowPowerUp, SLOW_SPAWN_INTERVAL);
             speedSpawnInterval = setInterval(spawnSpeedPowerUp, SPEED_SPAWN_INTERVAL);
-            
-            animationRunning = true;
-            startAnimationBtn.textContent = 'Stop Animation';
-            updateHealthAnimation();
         }
 
         updateHealthBar(redHealthBar, redSquareHealth, 4, redHealthColor);
@@ -3059,14 +2585,14 @@
             blueParticles.clear();
             clearTrails();
             
-            if (isTrackingAudio) {
+            if (isAudioRecording) {
                 simulationStartTime = Date.now();
                 audioEvents = [];
             }
             
             startCountdown();
             drawStandaloneHealthBars();
-            updateAnimatedCanvas();
+            updateRecordingStatus();
             
             knifeSpawnInterval = setInterval(spawnKnifePowerUp, KNIFE_SPAWN_INTERVAL);
             healSpawnInterval = setInterval(spawnHealPowerUp, HEAL_SPAWN_INTERVAL);
@@ -3118,22 +2644,12 @@
             }
         });
         
-        startAnimationBtn.addEventListener('click', startAnimation);
-        startAnimatedRecordingBtn.addEventListener('click', startAnimatedRecording);
-        stopAnimatedRecordingBtn.addEventListener('click', stopAnimatedRecording);
-        downloadAnimatedVideoBtn.addEventListener('click', downloadAnimatedVideo);
-        downloadAnimatedImageBtn.addEventListener('click', downloadAnimatedImage);
-        
-        animationSpeed.addEventListener('input', function() {
-            animationSpeedValue = parseFloat(this.value);
-            speedValue.textContent = `${animationSpeedValue}x`;
-        });
-        
-        document.querySelectorAll('.preset-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                setPreset(this.dataset.preset);
-            });
-        });
+        // NEW: EVENT LISTENERS FOR RECORDING CONTROLS
+        toggleRecordBtn.addEventListener('click', toggleAllRecordings);
+        downloadGameVideoBtn.addEventListener('click', downloadGameVideo);
+        downloadAudioBtn.addEventListener('click', downloadAudio);
+        downloadHealthBarsVideoBtn.addEventListener('click', downloadHealthBarsVideo);
+        downloadHealthBarsImageBtn.addEventListener('click', downloadHealthBarsImage);
         
         if (!CanvasRenderingContext2D.prototype.roundRect) {
             CanvasRenderingContext2D.prototype.roundRect = function(x, y, width, height, radius) {
@@ -3149,6 +2665,9 @@
                 return this;
             }
         }
+        
+        // Initial status update
+        updateRecordingStatus();
     </script>
 </body>
 </html>
