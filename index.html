@@ -71,7 +71,7 @@
         }
         canvas:fullscreen {
             object-fit: contain;
-            background-color: #212123 !important;
+            background-color: #FFFFFF ;
         }
         #healthBarCanvas {
             border: 2px solid #666;
@@ -1264,7 +1264,7 @@
         
         function drawStandaloneHealthBars() {
             // Fill background with #212123 (same as fullscreen outside area)
-            healthBarCtx.fillStyle = '#212123';
+            healthBarCtx.fillStyle = '#FFFFFF';
             healthBarCtx.fillRect(0, 0, healthBarCanvas.width, healthBarCanvas.height);
             
             const barWidth = 800;
@@ -1618,7 +1618,7 @@
                 canvas.style.height = '100vh';
                 canvas.style.objectFit = 'contain';
                 
-                canvas.style.backgroundColor = '#212123';
+                canvas.style.backgroundColor = '#FFFFFF';
                 
                 const scaleX = canvas.width / originalCanvasSize.width;
                 const scaleY = canvas.height / originalCanvasSize.height;
@@ -2504,7 +2504,7 @@
             }
             
             if (isFullscreen) {
-                ctx.fillStyle = '#212123';
+                ctx.fillStyle = '#FFFFFF';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 
                 ctx.fillStyle = '#ffffff';
